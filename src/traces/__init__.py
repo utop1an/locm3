@@ -1,4 +1,5 @@
 from .action import Action
+from .event import Event
 from .fluent import Fluent
 from .planning_object import PlanningObject
 from .trace import Trace
@@ -7,6 +8,7 @@ from .state import State
 
 __all__ = [
     'Action', 
+    'Event',
     'Fluent', 
     'PlanningObject', 
     'Trace', 

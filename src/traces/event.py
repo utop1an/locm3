@@ -1,4 +1,4 @@
-from traces import Action
+from .action import Action
 
 class Event:
     def __init__(self, action: Action, positions: set):
