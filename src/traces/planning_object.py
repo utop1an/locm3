@@ -1,5 +1,7 @@
+from .type import Type
+
 class PlanningObject:
-    def __init__ (self, name: str, type: str):
+    def __init__ (self, name: str, type: Type):
         self.name = name
         self.type = type
     
