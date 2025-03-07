@@ -1,5 +1,6 @@
 from .fluent import Fluent
 from typing import Dict
+from typing import NamedTuple
 
 class State:
     def __init__ (self, fluents: Dict[Fluent, bool]=None):
@@ -25,3 +26,10 @@ class State:
 
     def __hash__(self):
         return hash(repr(self))
+
+class StatePointers(NamedTuple):
+    start: int
+    end: int
+
+    def __repr__(self)-> str:
+        return f"({self.start}-{self.end})"
