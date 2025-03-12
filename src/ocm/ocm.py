@@ -19,6 +19,14 @@ class OCM(ABC):
         pass
 
     def step1(trace_list: List[Trace], sorts: bool, ocm_arity = 1, debug: bool = False):
+        """
+        Extract the consecutive events for each object, and construct the adjacency matrix for each sort
+        :param trace_list: List of traces
+        :param sorts: Dict of object sorts
+        :param ocm_arity: The arity of the OCM
+        :param debug: Print the adjacency matrix
+        :return: List of object traces, List of adjacency matrices 
+        """
         graphs = []
         for sort in range(len(set(sorts.values()))):
             graphs.append(nx.DiGraph())
@@ -51,7 +59,7 @@ class OCM(ABC):
             if debug:
                 print(f"AM for sort {i}")
                 pprint_table(AM)
-        return obj_trace_list
+        return obj_trace_list, AM_list
 
    
         
