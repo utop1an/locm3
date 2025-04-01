@@ -1,22 +1,23 @@
-from .ocm import OCM
+from .locm import LOCM
 from collections import defaultdict
-from typing import Set, Dict
+from typing import Set, Dict, List
 from traces import *
 
-class LOCM3(OCM):
+class LOCM3(LOCM):
 
-    def __init__(self):
+    def __init__(self,timeout:int=600, debug: Dict[str, bool]=None):
+        super().__init__(timeout, debug)
         pass
 
-    def extract_action_model(self):
-        obj_trace_list, AM_list = self.step1()
-        ce_B, ce_A = self.ceB_ceA(AM_list)
-
-
+    def extract_model(self, tracelist: List[Trace], sorts: Dict = None):
+        sorts = self._get_sorts(tracelist)
+        obj_trace_list, AM_list = self.trace_to_transition_matrix(self, tracelist, sorts)
+        ce_B, ce_A = self.get_ceB_ceA(AM_list)
 
         pass
 
-    def ceB_ceA(AM_list):
+    
+    def get_ceB_ceA(self, AM_list):
         ceB_list = []
         ceA_list = []
         for AM in AM_list:
