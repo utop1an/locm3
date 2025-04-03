@@ -15,6 +15,7 @@ class LOCM3(LOCM):
         ce_B, ce_A = self.get_ceB_ceA(AM_list)
 
         pass
+    
 
     
     def get_ceB_ceA(self, AM_list):
@@ -32,6 +33,19 @@ class LOCM3(LOCM):
             ceB_list.append(ceB)
             ceA_list.append(ceA)
         return ceB_list, ceA_list
+    
+    def get_me_list(self, AM_list, ceB_list, ceA_list):
+        for i in range(len(AM_list)):
+            AM = AM_list[i]
+            ceB = ceB_list[i]
+            ceA = ceA_list[i]
+
+            me = self.get_me(AM, ceB, ceA)
+            if me is not None:
+                return me
+    
+    def get_me(self, AM, ceB, ceA):
+        me = FSM()
 
     
     def pre_works():
