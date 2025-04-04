@@ -2,6 +2,7 @@ from .locm import LOCM
 from collections import defaultdict
 from typing import Set, Dict, List
 from traces import *
+import pandas as pd
 
 class LOCM3(LOCM):
 
@@ -11,41 +12,46 @@ class LOCM3(LOCM):
 
     def extract_model(self, tracelist: List[Trace], sorts: Dict = None):
         sorts = self._get_sorts(tracelist)
-        obj_trace_list, AM_list = self.trace_to_transition_matrix(self, tracelist, sorts)
-        ce_B, ce_A = self.get_ceB_ceA(AM_list)
+        obj_trace_list, TM_list = self.trace_to_transition_matrix(self, tracelist, sorts)
+        OSM_list =  self.TM_to_OSM(TM_list)
+        fluents, actions = self.OSM_to_action(OSM_list)
+
 
         pass
-    
 
+    def TM_to_OSM(self, TM_list: List[pd.DataFrame]):
+        OSM_list = []
+        for sort, TM in enumerate(TM_list):
+            OSM_by_event = []
+            for event, row in TM.iterrows():
+                ceA = self.get_ceA(TM, event)
+                osm = OSM(sort, event, ceA)
+                OSM_by_event.append(osm)
+            OSM_list.append(OSM_by_event)
+        return OSM_list
     
-    def get_ceB_ceA(self, AM_list):
-        ceB_list = []
-        ceA_list = []
-        for AM in AM_list:
-            ceB: Set[Event] = set()
-            ceA: Dict[Event, Set[Event]] = defaultdict(set)
-            
-            for i, row in AM.iterrows():
-                for j, value in row.items():
-                    if value == 1:
-                        ceB.add(i)
-                        ceA[i].add(j)
-            ceB_list.append(ceB)
-            ceA_list.append(ceA)
-        return ceB_list, ceA_list
+    def get_ceA(self, TM, event):
+        ceA = set()
+        for i, row in TM.iterrows():
+            for j, val in row.items():
+                if val == 1 and j!= event:
+                    ceA.add(j)
+        return ceA
     
-    def get_me_list(self, AM_list, ceB_list, ceA_list):
-        for i in range(len(AM_list)):
-            AM = AM_list[i]
-            ceB = ceB_list[i]
-            ceA = ceA_list[i]
+    def OSM_to_action(self, OSM_list: List[List[OSM]]):
+        actions = set()
+        fluents = set()
 
-            me = self.get_me(AM, ceB, ceA)
-            if me is not None:
-                return me
-    
-    def get_me(self, AM, ceB, ceA):
-        me = FSM()
+        for sort, OSM_by_event in enumerate(OSM_list):
+            for osm in OSM_by_event:
+                event = osm.event
+                action = LearnedAction(event.action, sort)
+                actions.add(action)
+
+                for obj in event.obj_params:
+                    fluent = Fluent(obj.name, sort)
+                    fluents.add(fluent)
+
 
     
     def pre_works():
