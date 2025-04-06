@@ -11,7 +11,7 @@ class LOCM(OCM):
         
         obj_trace_list, AM_list = self.trace_to_transition_matrix(tracelist, sorts)
 
-    def step1_extract_trace(self, tracelist, sorts: Dict):
+    def trace_to_transition_matrix(self, tracelist, sorts: Dict):
         
         obj_trace_list = self._extract_trace(tracelist, sorts)
         return obj_trace_list

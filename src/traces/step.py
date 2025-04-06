@@ -1,8 +1,8 @@
-from .action import Action
+from pddl.actions import ActionSignature
 from .state import State
 
 class Step:
-    def __init__ (self, action: Action, state: State, index: int):
+    def __init__ (self, action: ActionSignature, state: State, index: int):
         self.action = action
         self.state = state
         self.index = index

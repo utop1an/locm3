@@ -1,8 +1,8 @@
-from .action import Action
+from pddl.actions import ActionSignature
 from typing import List
 
 class Event:
-    def __init__(self, action: Action, position: set, sort: List[int] = None):
+    def __init__(self, action: ActionSignature, position: set, sort: List[int] = None):
         self.action = action
         self.position = position
         self.sort = sort

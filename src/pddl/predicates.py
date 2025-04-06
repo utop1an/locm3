@@ -1,9 +1,9 @@
-from .planning_object import PlanningObject
+from . import TypedObject
 from typing import List
 
 class Fluent:
     
-    def __init__(self, name: str, objects: List[PlanningObject]):
+    def __init__(self, name: str, objects: List[TypedObject]):
         self.name = name
         self.objects = objects
 
@@ -22,7 +22,7 @@ class Fluent:
         return self.name == other.name and self.objects == other.objects
 
 
-class LearnedFluent:
+class LearnedLiftedFluent:
         
         def __init__(self, name: str, param_sorts: List[int], param_act_idx: List[int],):
             self.name = name
@@ -39,7 +39,25 @@ class LearnedFluent:
             return f"{self.name} {' '.join(self.param_sorts)}"
         
         def __eq__(self, other) -> bool:
-            if not isinstance(other, LearnedFluent):
+            if not isinstance(other, LearnedLiftedFluent):
                 return False
             return self.name == other.name and hash(self) == hash(other)
         
+        def to_predicate(self, type_dict):
+            arguments = []
+            for i, sort in enumerate(self.param_sorts):
+                arg = TypedObject(f"x{i}", type_dict[sort])
+                arguments.append(arg)
+            return Predicate(self.name, arguments)
+        
+
+class Predicate:
+    def __init__(self, name, arguments):
+        self.name = name
+        self.arguments = arguments
+
+    def __str__(self):
+        return "%s(%s)" % (self.name, ", ".join(map(str, self.arguments)))
+
+    def get_arity(self):
+        return len(self.arguments)

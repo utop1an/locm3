@@ -1,4 +1,4 @@
-from .fluent import Fluent
+from pddl.predicates import Fluent
 from typing import Dict
 from typing import NamedTuple
 

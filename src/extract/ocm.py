@@ -29,18 +29,18 @@ class OCM(ABC):
         pass
     
     @staticmethod
-    def _get_sorts(tracelist, sorts) -> Sorts:
+    def _get_sorts(trace_list, types) -> Sorts:
         """Get the sorts of objects from the traces. If sorts is not given, use it.
 
-        :param tracelist: List of traces to extract sorts from.
+        :param trace_list: List of traces to extract sorts from.
         :param sorts: Dictionary of sorts to use. If None, extract from traces.
 
         :return: Dictionary of sorts.
         """
-        if sorts is not None:
-           return sorts
+        if types is not None:
+           return types
         s = defaultdict(set)
-        for obs_trace in tracelist:
+        for obs_trace in trace_list:
             for obs in obs_trace:
                 action = obs.action
                 if action is None:
