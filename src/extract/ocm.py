@@ -2,19 +2,18 @@ from abc import ABC, abstractmethod
 from typing import List, Set, Dict
 from collections import defaultdict
 from networkx import nx
-from traces import *
+from traces import Trace, Event, SingletonEvent, StatePointers
+from pddl import TypedObject, Type
 from utlis import *
-
-# Predefined types
-Sorts= Dict[str, int]
-ObjectTrace= Dict[PlanningObject, List[Event]]
-ZERO = PlanningObject("zero", Type("zero"))
-
-
 
 
 
 class OCM(ABC):
+
+    # Predefined types
+    SortDict= Dict[str, int] # {obj_name: sort}
+    ObjectTrace= Dict[TypedObject, List[Event]] 
+    ZEROOBJ = TypedObject("zero","zero")
 
     def __init__(self,timeout:int = 600, debug: Dict[str, bool]=None):
         self.timeout = timeout
@@ -25,11 +24,11 @@ class OCM(ABC):
         pass
 
     @abstractmethod
-    def trace_to_transition_matrix(self):
+    def trace_to_obj_trace(self):
         pass
     
     @staticmethod
-    def _get_sorts(trace_list, types) -> Sorts:
+    def _get_sorts(trace_list, types) -> SortDict:
         """Get the sorts of objects from the traces. If sorts is not given, use it.
 
         :param trace_list: List of traces to extract sorts from.
