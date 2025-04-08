@@ -6,10 +6,11 @@ from typing import List
 
 class LearnedModel:
 
-    def __init__(self, fluents: List[LearnedLiftedFluent], actions: List[LearnedAction], types):
+    def __init__(self, fluents: List[LearnedLiftedFluent], actions: List[LearnedAction], types, sort_to_type_dict ):
         self.fluents = fluents
         self.actions = actions
         self.types = types
+        self.sort_to_type_dict  = sort_to_type_dict 
 
     
     def to_pddl_task(self, domain_name):
@@ -22,18 +23,22 @@ class LearnedModel:
         axioms = []
         functions = []
 
-        types = []
+        types = [Type("object")]
+     
         for t in self.types:
             types.append(Type(t))
-
         type_dict = {t.name: t for t in types}
+
+
         predicates = []
         for fluent in self.fluents:
-            predicates.append(fluent.to_pddl_predicate())
+            predicates.append(fluent.to_pddl_predicate(self.sort_to_type_dict ))
+        predicate_dict = {p.name: p for p in predicates}
+
 
         actions = []
         for action in self.actions:
-            actions.append(action.to_pddl_action())
+            actions.append(action.to_pddl_action(predicate_dict, self.sort_to_type_dict ))
         
 
 

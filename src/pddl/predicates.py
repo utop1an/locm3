@@ -43,10 +43,10 @@ class LearnedLiftedFluent:
                 return False
             return self.name == other.name and hash(self) == hash(other)
         
-        def to_predicate(self, type_dict):
+        def to_pddl_predicate(self, sort_to_type_dict ):
             arguments = []
-            for i, sort in enumerate(self.param_sorts):
-                arg = TypedObject(f"x{i}", type_dict[sort])
+            for idx, sort in zip(self.param_act_idx, self.param_sorts):
+                arg = TypedObject(f"?x{idx}", sort_to_type_dict [sort])
                 arguments.append(arg)
             return Predicate(self.name, arguments)
         

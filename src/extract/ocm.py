@@ -29,7 +29,7 @@ class OCM(ABC):
         pass
     
     @staticmethod
-    def _get_sorts(trace_list, types) -> SortDict:
+    def _get_sorts(trace_list, type_dict) -> SortDict:
         """Get the sorts of objects from the traces. If sorts is not given, use it.
 
         :param trace_list: List of traces to extract sorts from.
@@ -37,8 +37,9 @@ class OCM(ABC):
 
         :return: Dictionary of sorts.
         """
-        if types is not None:
-           return types
+        sort_to_type_dict  = {}
+        if type_dict is not None:
+           raise NotImplementedError("Predefined type is not implemented yet.")
         s = defaultdict(set)
         for obs_trace in trace_list:
             for step in obs_trace.steps:
@@ -77,7 +78,19 @@ class OCM(ABC):
                 obj_sorts[obj] = i + 1
         obj_sorts['zero'] = 0
  
-        return obj_sorts
+        return obj_sorts, None
+    
+    @staticmethod
+    def _sorts_to_types(sorts: SortDict, sort_to_type_dict ):
+        if sort_to_type_dict  is None:
+            types= [TypedObject(obj, f"s{sort}") for obj, sort in sorts.items()]
+            return types
+        
+        raise NotImplementedError("Predefined type is not implemented yet.")
+        types = {}
+        return types
+
+        
 
     @staticmethod
     def _pointer_to_set(states: List[Set], pointer1, pointer2 = None):
@@ -96,6 +109,7 @@ class OCM(ABC):
         assert state1 is not None, f"Pointer ({pointer1}) not in states: {states}"
         assert state2 is not None, f"Pointer ({pointer2}) not in states: {states}"
         return state1, state2
+    
 
     
 

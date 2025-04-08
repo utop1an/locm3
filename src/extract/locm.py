@@ -155,6 +155,7 @@ class LOCM(OCM):
                     state_params_to_hyps[sort][state][key] = hyps
 
         if viz:
+            raise NotImplementedError("Visualization is not implemented yet.")
             LOCM._debug_state_machines(OS, ap_state_pointers, state_params)
 
         fluents = defaultdict(dict)
@@ -258,6 +259,6 @@ class LOCM(OCM):
             if action.name in statics:
                 for static in statics[action.name]:
                     action.update_precond(static)
-
-        model = LearnedModel(fluents, actions, self.sorts)
+        types = OCM.sort_to_type(sorts, None)
+        model = LearnedModel(fluents, actions, types)
         return model
