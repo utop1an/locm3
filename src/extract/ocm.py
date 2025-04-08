@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List, Set, Dict
 from collections import defaultdict
-from networkx import nx
+import networkx as nx
 from traces import Trace, Event, SingletonEvent, StatePointers
 from pddl import TypedObject, Type
-from utlis import *
+from utils import *
 
 
 
@@ -15,7 +15,8 @@ class OCM(ABC):
     ObjectTrace= Dict[TypedObject, List[Event]] 
     ZEROOBJ = TypedObject("zero","zero")
 
-    def __init__(self,timeout:int = 600, debug: Dict[str, bool]=None):
+    def __init__(self,state_param:bool=True, timeout:int = 600, debug: Dict[str, bool]=None):
+        self.state_param = state_param
         self.timeout = timeout
         self.debug = debug
 
@@ -40,8 +41,8 @@ class OCM(ABC):
            return types
         s = defaultdict(set)
         for obs_trace in trace_list:
-            for obs in obs_trace:
-                action = obs.action
+            for step in obs_trace.steps:
+                action = step.action
                 if action is None:
                     continue
                 for i,obj in enumerate(action.obj_params):
@@ -80,7 +81,21 @@ class OCM(ABC):
 
     @staticmethod
     def _pointer_to_set(states: List[Set], pointer1, pointer2 = None):
-     pass
+        """
+        Get the state(index) of the given pointer in the states.
+        """
+        state1, state2 = None, None
+        for i, state_set in enumerate(states):
+            if pointer1 in state_set:
+                state1 = i
+            if pointer2 is None or pointer2 in state_set:
+                state2 = i
+            if state1 is not None and state2 is not None:
+                break
+
+        assert state1 is not None, f"Pointer ({pointer1}) not in states: {states}"
+        assert state2 is not None, f"Pointer ({pointer2}) not in states: {states}"
+        return state1, state2
 
     
 

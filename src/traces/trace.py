@@ -1,5 +1,5 @@
 from typing import List
-from traces import Step
+from .step import Step
 
 class Trace:
     def __init__ (self, steps: List[Step]=None):

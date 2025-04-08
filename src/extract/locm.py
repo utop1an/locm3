@@ -9,16 +9,22 @@ class LOCM(OCM):
     TransitionSet = set[Event] | Dict[int, Dict[TypedObject, List[Event]]]
     ObjectStates = Dict[int, List[Set[int]]]
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, state_param:bool=True, timeout:int=600, debug: Dict[str, bool]=None):
+        super().__init__(state_param, timeout, debug)
+        
 
     def extract_model(self, tracelist, sorts=None):
         
         sorts = self._get_sorts(tracelist, sorts)
         
         obj_trace_list = self.trace_to_obj_trace(tracelist, sorts)
-        TS, OS, ap_state_pointers = self.get_OS_TS(obj_trace_list)
-        bindings = self.get_state_bindings()
+        TS, OS, ap_state_pointers = self.get_TS_OS(obj_trace_list)
+        if self.state_param:
+            bindings = self.get_state_bindings()
+        else:
+            bindings = None
+        model = self.get_model(OS, ap_state_pointers, sorts, bindings, statics=None, debug=False, viz=False)
+        return model
 
 
 
@@ -35,8 +41,8 @@ class LOCM(OCM):
         obj_traces_list: List[OCM.ObjectTrace] = []
         for trace in trace_list:
             obj_traces: OCM.ObjectTrace = defaultdict(list)
-            for obs in trace:
-                action = obs.action
+            for step in trace.steps:
+                action = step.action
                 if action is not None:
                     # add the step for the zero-object
                     obj_traces[zero_obj].append(SingletonEvent(action, pos=0, sort=0))
@@ -46,8 +52,9 @@ class LOCM(OCM):
                         ap = SingletonEvent(action, pos=j + 1, sort=sorts[obj.name])
                         obj_traces[obj].append(ap)
         obj_traces_list.append(obj_traces)
+        return obj_traces_list
     
-    def get_OS_TS(self, obj_traces_list: List[OCM.ObjectTrace], sorts) -> List[pd.DataFrame]:
+    def get_TS_OS(self, obj_traces_list: List[OCM.ObjectTrace], sorts) -> tuple[TransitionSet, ObjectStates, Dict[int, Dict[Event, StatePointers]]]:
         """
         Convert a list of object traces to a list of transition matrices.
         
