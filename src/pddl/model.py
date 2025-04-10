@@ -1,6 +1,6 @@
-from pddl.actions import LearnedLiftedFluent, LearnedAction
-from pddl.tasks import Task, Requirements
-from pddl.pddl_types import Type
+from .actions import LearnedLiftedFluent, LearnedAction
+from .tasks import Task, Requirements
+from .pddl_types import Type
 from typing import List
 
 
@@ -19,27 +19,26 @@ class LearnedModel:
         """
 
         task_name,requirements, objects, init, goal, use_metric = None, None, None, None, None,None
-        requirements = Requirements(["strips", "typing"])
+        requirements = Requirements([":strips", ":typing"])
         axioms = []
         functions = []
 
         types = [Type("object")]
      
-        for t in self.types:
-            types.append(Type(t))
+        types.extend(self.types)
         type_dict = {t.name: t for t in types}
-
+        print(types)
 
         predicates = []
         for fluent in self.fluents:
             predicates.append(fluent.to_pddl_predicate(self.sort_to_type_dict ))
         predicate_dict = {p.name: p for p in predicates}
-
+       
 
         actions = []
         for action in self.actions:
             actions.append(action.to_pddl_action(predicate_dict, self.sort_to_type_dict ))
-        
+       
 
 
         task = Task( domain_name, task_name, requirements, types, objects,

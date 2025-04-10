@@ -61,20 +61,23 @@ class Task:
         print("Types:")
         for type in self.types:
             print("  %s" % type)
-        print("Objects:")
-        for obj in self.objects:
-            print("  %s" % obj)
+        if self.objects:
+            print("Objects:")
+            for obj in self.objects:
+                print("  %s" % obj)
         print("Predicates:")
         for pred in self.predicates:
             print("  %s" % pred)
         print("Functions:")
         for func in self.functions:
             print("  %s" % func)
-        print("Init:")
-        for fact in self.init:
-            print("  %s" % fact)
-        print("Goal:")
-        self.goal.dump()
+        if self.init:
+            print("Init:")
+            for fact in self.init:
+                print("  %s" % fact)
+        if self.goal:
+            print("Goal:")
+            self.goal.dump()
         print("Actions:")
         for action in self.actions:
             action.dump()

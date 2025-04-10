@@ -33,10 +33,10 @@ class LearnedLiftedFluent:
             return hash(repr(self))
         
         def __str__(self) -> str:
-            return f"{self.name} {' '.join(self.param_sorts)}"
+            return f"{self.name} {' '.join(str(s) for s in self.param_sorts)}"
         
         def __repr__(self)-> str:
-            return f"{self.name} {' '.join(self.param_sorts)}"
+            return f"{self.name} {' '.join(str(s) for s in self.param_sorts)}"
         
         def __eq__(self, other) -> bool:
             if not isinstance(other, LearnedLiftedFluent):
@@ -45,8 +45,8 @@ class LearnedLiftedFluent:
         
         def to_pddl_predicate(self, sort_to_type_dict ):
             arguments = []
-            for idx, sort in zip(self.param_act_idx, self.param_sorts):
-                arg = TypedObject(f"?x{idx}", sort_to_type_dict [sort])
+            for i, sort in enumerate(self.param_sorts):
+                arg = TypedObject(f"?x{i}", sort_to_type_dict[sort])
                 arguments.append(arg)
             return Predicate(self.name, arguments)
         

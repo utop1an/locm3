@@ -1,8 +1,9 @@
 import copy
 from typing import List, Set, Union
-from . import conditions, effects
-from . import NegatedAtom, Atom, TypedObject
+from .conditions import NegatedAtom, Atom, Conjunction, Impossible, Truth
+from .effects import SimpleEffect, ConjunctiveEffect, Effect
 from .predicates import LearnedLiftedFluent
+from .pddl_types import TypedObject
 
 class ActionSignature:
     def __init__ (self, name: str, obj_params: List[TypedObject]):
@@ -67,10 +68,10 @@ class LearnedAction:
 
     def __hash__(self):
         # Order of param_sorts is important!
-        return hash(self.details())
+        return hash(repr(self))
 
     def __repr__(self) -> str:
-        return f"({self.name} {' '.join(self.param_sorts)})"
+        return f"({self.name} {' '.join(str(s) for s in self.param_sorts)})"
         
     def update_param_sorts(self, index, sort):
         """Updates the parameter sorts of the action.
@@ -121,24 +122,27 @@ class LearnedAction:
     def to_pddl_action(self, predicate_dict, sort_to_type_dict ):
         """Converts the learned action to a PDDL action.
         """
-        parameters = [TypedObject(f"?x{i}", sort_to_type_dict [sort]) for i, sort in enumerate(self.param_sorts)]
-        precondition = conditions.Conjunction([predicate_dict[f.name] for f in self.precond])
+        parameters = [TypedObject(f"?x{i+1}", sort_to_type_dict [sort]) for i, sort in enumerate(self.param_sorts)]
+        preconds = []
+        for learned_pre in self.precond:
+            atom = Atom(learned_pre.name, [f"?x{i}" for i in learned_pre.param_act_idx])
+            preconds.append(atom)
+        precondition = Conjunction(preconds)
         effs=[]
+        condition = Truth().simplified()
         for learned_add in self.add:
             atom = Atom(learned_add.name, [f"?x{i}" for i in learned_add.param_act_idx])
-            predicate = predicate_dict[learned_add.name]
-            for i, arg in enumerate(predicate.arguments):
-                assert arg.name == atom.args[i].name, f"Argument mismatch: {arg.name} != {atom.args[i].name}"
-            effs.append(effects.SimpleEffect(atom))
+            
+            add_eff = Effect([], condition, atom)
+           
+            effs.append(add_eff)
         
         for learned_del in self.delete:
             negatedAtom = NegatedAtom(learned_del.name, [f"?x{i}" for i in learned_del.param_act_idx])
-            predicate = predicate_dict[learned_add.name]
-            for i, arg in enumerate(predicate.arguments):
-                assert arg.name == atom.args[i].name, f"Argument mismatch: {arg.name} != {atom.args[i].name}"
-            effs.append(effects.SimpleEffect(atom))
-        conjunctive_effect = effects.ConjunctiveEffect(effs)
-        return Action(self.name, parameters, len(parameters), precondition, conjunctive_effect)
+            del_eff = Effect([], condition, negatedAtom)
+            effs.append(del_eff)
+        conjunctive_effect = ConjunctiveEffect(effs)
+        return Action(self.name, parameters, len(parameters), precondition, effs)
 
 class Action:
     def __init__(self, name, parameters, num_external_parameters,
@@ -196,7 +200,7 @@ class Action:
         result = copy.copy(self)
         parameter_atoms = [par.to_untyped_strips() for par in self.parameters]
         new_precondition = self.precondition.untyped()
-        result.precondition = conditions.Conjunction(parameter_atoms + [new_precondition])
+        result.precondition = Conjunction(parameter_atoms + [new_precondition])
         result.effects = [eff.untyped() for eff in self.effects]
         return result
 
@@ -217,7 +221,7 @@ class Action:
         try:
             self.precondition.instantiate(var_mapping, init_facts,
                                           fluent_facts, precondition)
-        except conditions.Impossible:
+        except Impossible:
             return None
         effects = []
         for eff in self.effects:

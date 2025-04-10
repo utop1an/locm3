@@ -7,32 +7,28 @@ from matplotlib.pylab import rand
 from requests import get
 from traitlets import default
 from pddl import ActionSignature, TypedObject
+from pddl_parser import open
 
 
 
 random.seed(42)
 
 class ExecutabilityEvaluator:
-    def __init__(self, domain_filename, executability_type='overall', gt_domain_filename=None) -> None:
-        self.domain_filename = domain_filename
-        self.gt_domain_filename = gt_domain_filename
-        try:
-            self.initialize_task()
-            self.executability_type = executability_type
-
-        except Exception as e:
-            raise Exception(f"Error parsing file{domain_filename}: {e} ")
+    def __init__(self, learned_domain, executability_type='cross' , gt_domain_filename=None) -> None:
+        self.learned_domain = learned_domain
+        if (gt_domain_filename):
+            try:
+                self.initialize_task()
+            except Exception as e:
+                raise Exception(f"Error initializing task: {e}")
+        self.executability_type = executability_type
 
     def initialize_task(self):
-        """Initialize the task from domain and problem files. This should be called in the worker process."""
-        domain = pddl_parser.open(self.domain_filename)
-        normalize.normalize(domain)
-        self.domain = domain
+        gt_domain = open(self.gt_domain_filename)
+        self.gt_domain = gt_domain
 
-        if self.gt_domain_filename:
-            gt_domain = pddl_parser.open(self.gt_domain_filename)
-            normalize.normalize(gt_domain)
-            self.gt_domain = gt_domain
+  
+            
 
        
 
@@ -41,12 +37,12 @@ class ExecutabilityEvaluator:
             return self.get_overall_executability("l",action_sequence,set(), set(), debug)
         elif (self.executability_type == 'first_fail'):
             return self.get_first_fail_executability(action_sequence, debug)
-        elif (self.executability_type == 'twoway'):
-            return self.get_twoway_executabilities(action_sequence, debug)
+        elif (self.executability_type == 'cross'):
+            return self.get_cross_executabilities(action_sequence, debug)
         else:
             raise Exception("Invalid executability type")
         
-    def get_twoway_executabilities(self,action_sequence, debug=False):
+    def get_cross_executabilities(self,action_sequence, debug=False):
         if not self.domain:
             raise Exception("Domain not initialized")
         if not self.gt_domain_filename:
@@ -55,8 +51,8 @@ class ExecutabilityEvaluator:
         if (len(action_sequence)==0):
             raise Exception("Error checking executability: Length 0")
         
-        l_seqs, l_init, l_visited, lim = self.get_seqs('l', action_sequence)
-        gt_seqs, gt_init, gt_visited,_ = self.get_seqs('gt', action_sequence, lim)
+        l_seqs, l_init, l_visited, length = self.generate_action_seqs('l', action_sequence)
+        gt_seqs, gt_init, gt_visited, _ = self.generate_action_seqs('gt', action_sequence, length)
 
         l_res = []
         gt_res = []
@@ -70,7 +66,7 @@ class ExecutabilityEvaluator:
         
         return sum(l_res)/len(l_res), sum(gt_res)/len(gt_res)
     
-    def get_seqs(self, domain_type, action_sequence, limit=None):
+    def generate_action_seqs(self, domain_type, action_sequence, limit=None):
         if domain_type == 'l':
             domain = self.domain
         elif domain_type == 'gt':
@@ -133,11 +129,11 @@ class ExecutabilityEvaluator:
             true_effs = true_effs.union(adds)
             true_effs.difference_update(dels)
 
-        new_action_sequences = self.generate_new_action_sequence(domain_type, type_objs, true_effs, visited, len(action_sequence))
+        new_action_sequences = self.generate_action_seq(domain_type, type_objs, true_effs, visited, len(action_sequence))
         
         return new_action_sequences, true_effs, visited, i
 
-    def generate_new_action_sequence(self,domain_type, type_objs, init_effs, init_visited, length, debug=False):
+    def generate_action_seq(self,domain_type, type_objs, init_effs, init_visited, length, debug=False):
         if domain_type == 'l':
             domain = self.domain
         elif domain_type == 'gt':
@@ -202,22 +198,6 @@ class ExecutabilityEvaluator:
         return action_seqs
 
     
-    # def get_gt_executability(self,action_sequences, debug=False):
-    #     if (len(action_sequences)==0):
-    #         print("cant find act seqs, exe 0")
-    #         return 0
-    #     res = []
-    #     gt_planner = PseudoPlanner(self.gt_domain_filename, executability_type='overall')
-    #     for act_seq in action_sequences:
-    #         if (len(act_seq)==0):
-    #             print("cant find valid act seq, exe 0")
-    #             res.append(0)
-    #             continue
-
-    #         exe = gt_planner.check_executability(act_seq, debug)
-    #         res.append(exe)
-    #     return sum(res)/len(res)
-    
     def get_overall_executability(self,domain_type, action_sequence,_true_effs, _visited, debug=False):
         if domain_type == 'l':
             domain = self.domain
@@ -226,7 +206,7 @@ class ExecutabilityEvaluator:
         else:
             raise Exception("Invalid domain")
         if not domain:
-            raise Exception("Domain not initialized")
+            raise Exception("Domain not given")
         
         if (len(action_sequence)==0):
             return 0
@@ -297,7 +277,7 @@ class ExecutabilityEvaluator:
         for i, a in enumerate(action_sequence):
             action = self.domain.get_action(a.name)
             if not action:
-                raise InvalidModel(self.domain_filename)
+                raise KeyError(self.domain_filename)
 
             param_names = [p.name for p in action.parameters]
             param_types = [p.type_name for p in action.parameters]
