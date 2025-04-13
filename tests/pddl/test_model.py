@@ -40,5 +40,5 @@ def test_to_pddl_task():
 
     model = LearnedModel(fluents, actions, types, sort_to_type_dict)
 
-    pddl_task = model.to_pddl_task("test_domain")
+    pddl_task = model.to_pddl_domain("test_domain")
     pddl_task.dump()

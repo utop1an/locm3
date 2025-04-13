@@ -29,7 +29,7 @@ class OCM(ABC):
         pass
     
     @staticmethod
-    def _get_sorts(trace_list, type_dict) -> SortDict:
+    def _get_sorts(trace_list, type_dict) -> tuple:
         """Get the sorts of objects from the traces. If sorts is not given, use it.
 
         :param trace_list: List of traces to extract sorts from.
@@ -78,7 +78,7 @@ class OCM(ABC):
                 obj_sorts[obj] = i + 1
         obj_sorts['zero'] = 0
  
-        return obj_sorts, None
+        return obj_sorts, sort_to_type_dict
     
     @staticmethod
     def _sorts_to_types(sorts: SortDict, sort_to_type_dict ):

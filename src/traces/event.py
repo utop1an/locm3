@@ -34,8 +34,7 @@ class SingletonEvent(Event):
     def __eq__(self, other):
         return (
             isinstance(other, SingletonEvent)
-            and self.action == other.action
-            and self.pos == other.pos
+            and hash(self) == hash(other)
         )
         
         

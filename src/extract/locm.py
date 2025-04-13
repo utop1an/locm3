@@ -13,9 +13,10 @@ class LOCM(OCM):
         super().__init__(state_param, timeout, debug)
         
 
-    def extract_model(self, tracelist, sorts=None):
+    def extract_model(self, tracelist, sorts=None)-> LearnedModel:
         
-        sorts = self._get_sorts(tracelist, sorts)
+        sorts, sort_to_type_dict = self._get_sorts(tracelist, sorts)
+        print(f"Extracted sorts: {sorts}")
         
         obj_trace_list = self.trace_to_obj_trace(tracelist, sorts)
         TS, OS, ap_state_pointers = self.get_TS_OS(obj_trace_list)
@@ -115,14 +116,12 @@ class LOCM(OCM):
     
 
     def get_state_bindings():
-
-
         bindings = defaultdict(dict)
 
 
         return bindings
     
-    def get_model(self, OS, ap_state_pointers, sorts, bindings, statics, debug=False, viz= False):
+    def get_model(self, OS, ap_state_pointers, sorts, bindings, statics=[], debug=False, viz= False):
         
         # delete zero-object if it's state machine was discarded
         if not OS[0]:
@@ -132,27 +131,29 @@ class LOCM(OCM):
 
 
         # all_aps = {action_name: [AP]}
-        all_aps: Dict[str, List[Event]] = defaultdict(list)
+        all_aps: Dict[str, Set[Event]] = defaultdict(set)
         for aps in ap_state_pointers.values():
             for ap in aps:
-                all_aps[ap.action.name].append(ap)
+                all_aps[ap.action.name].add(ap)
+        print(f"Extracted actions: {all_aps}")
 
-        state_params = defaultdict(dict)
-        state_params_to_hyps = defaultdict(dict)
-        for sort in bindings:
-            state_params[sort] = defaultdict(dict)
-            state_params_to_hyps[sort] = defaultdict(dict)
-            for state in bindings[sort]:
-                keys = {b.param for b in bindings[sort][state]}
-                typ = None
-                for key in keys:
-                    hyps = [
-                        b.hypothesis for b in bindings[sort][state] if b.param == key
-                    ]
-                    # assert that all are the same G_
-                    assert len(set([h.G_ for h in hyps])) == 1
-                    state_params[sort][state][key] = hyps[0].G_
-                    state_params_to_hyps[sort][state][key] = hyps
+        if bindings:
+            state_params = defaultdict(dict)
+            state_params_to_hyps = defaultdict(dict)
+            for sort in bindings:
+                state_params[sort] = defaultdict(dict)
+                state_params_to_hyps[sort] = defaultdict(dict)
+                for state in bindings[sort]:
+                    keys = {b.param for b in bindings[sort][state]}
+                    typ = None
+                    for key in keys:
+                        hyps = [
+                            b.hypothesis for b in bindings[sort][state] if b.param == key
+                        ]
+                        # assert that all are the same G_
+                        assert len(set([h.G_ for h in hyps])) == 1
+                        state_params[sort][state][key] = hyps[0].G_
+                        state_params_to_hyps[sort][state][key] = hyps
 
         if viz:
             raise NotImplementedError("Visualization is not implemented yet.")
@@ -181,13 +182,14 @@ class LOCM(OCM):
                     start_fluent = LearnedLiftedFluent(
                         start_fluent_name,
                         param_sorts=[sort_str],
-                        param_act_inds=[ap.pos - 1],
+                        param_act_idx=[ap.pos - 1],
                     )
                     fluents[ap.action.name][start_fluent_name] = start_fluent
 
                 start_fluent = fluents[ap.action.name][start_fluent_name]
 
                 if (
+                    bindings and 
                     sort in state_params_to_hyps
                     and start_state in state_params_to_hyps[sort]
                 ):
@@ -210,7 +212,7 @@ class LOCM(OCM):
                                 pind = hyp.l_
                         if psort is not None:
                             start_fluent.param_sorts.append(f"sort{psort}")
-                            start_fluent.param_act_inds.append(pind - 1)
+                            start_fluent.param_act_idx.append(pind - 1)
 
                 a.update_precond(start_fluent)
 
@@ -220,13 +222,14 @@ class LOCM(OCM):
                         end_fluent = LearnedLiftedFluent(
                             end_fluent_name,
                             param_sorts=[sort_str],
-                            param_act_inds=[ap.pos - 1],
+                            param_act_idx=[ap.pos - 1],
                         )
                         fluents[ap.action.name][end_fluent_name] = end_fluent
 
                     end_fluent = fluents[ap.action.name][end_fluent_name]
 
                     if (
+                        bindings and 
                         sort in state_params_to_hyps
                         and end_state in state_params_to_hyps[sort]
                     ):
@@ -249,7 +252,7 @@ class LOCM(OCM):
                                     pind = hyp.k_
                             if psort is not None:
                                 end_fluent.param_sorts.append(f"sort{psort}")
-                                end_fluent.param_act_inds.append(pind - 1)
+                                end_fluent.param_act_idx.append(pind - 1)
 
                     a.update_delete(start_fluent)
                     a.update_add(end_fluent)
@@ -259,6 +262,11 @@ class LOCM(OCM):
             if action.name in statics:
                 for static in statics[action.name]:
                     action.update_precond(static)
-        types = OCM.sort_to_type(sorts, None)
-        model = LearnedModel(fluents, actions, types)
+
+        fluents = set(fluent
+            for action_fluents in fluents.values()
+            for fluent in action_fluents.values())
+        actions = set(actions.values())
+        types = OCM._sorts_to_types(sorts, None)
+        model = LearnedModel(fluents, actions, types, sort_to_type_dict= {1: 'block', 2: 'block', 0: 'zero'})
         return model

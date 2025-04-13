@@ -13,7 +13,7 @@ class LearnedModel:
         self.sort_to_type_dict  = sort_to_type_dict 
 
     
-    def to_pddl_task(self, domain_name):
+    def to_pddl_domain(self, domain_name):
         """
         Converts the learned model to a PDDL task.
         """
