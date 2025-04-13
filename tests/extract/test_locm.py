@@ -45,7 +45,7 @@ def test_get_model():
     obj_trace_list = locm.trace_to_obj_trace([trace], sorts)
     TS,OS,ap_state_pointers = locm.get_TS_OS(obj_trace_list, sorts)
 
-    model = locm.get_model(OS, ap_state_pointers, sorts, None, [])
+    model = locm.get_model(OS, ap_state_pointers, sorts, None)
     print("Model:")
     for fluent in model.fluents:
         print(f"Fluent: {fluent}")

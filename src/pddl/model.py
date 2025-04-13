@@ -6,11 +6,10 @@ from typing import List
 
 class LearnedModel:
 
-    def __init__(self, fluents: List[LearnedLiftedFluent], actions: List[LearnedAction], types, sort_to_type_dict ):
+    def __init__(self, fluents: List[LearnedLiftedFluent], actions: List[LearnedAction], types ):
         self.fluents = fluents
         self.actions = actions
         self.types = types
-        self.sort_to_type_dict  = sort_to_type_dict 
 
     
     def to_pddl_domain(self, domain_name):
@@ -31,13 +30,13 @@ class LearnedModel:
 
         predicates = []
         for fluent in self.fluents:
-            predicates.append(fluent.to_pddl_predicate(self.sort_to_type_dict ))
+            predicates.append(fluent.to_pddl_predicate())
         predicate_dict = {p.name: p for p in predicates}
        
 
         actions = []
         for action in self.actions:
-            actions.append(action.to_pddl_action(predicate_dict, self.sort_to_type_dict ))
+            actions.append(action.to_pddl_action(predicate_dict ))
        
 
 

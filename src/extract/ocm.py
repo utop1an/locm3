@@ -35,7 +35,7 @@ class OCM(ABC):
         :param trace_list: List of traces to extract sorts from.
         :param sorts: Dictionary of sorts to use. If None, extract from traces.
 
-        :return: Dictionary of sorts.
+        :return: Dictionary of sorts, and a dictionary of sort to type mapping.
         """
         sort_to_type_dict  = {}
         if type_dict is not None:

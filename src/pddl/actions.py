@@ -52,9 +52,9 @@ class IndexedActionSignature(ActionSignature):
         )
     
 class LearnedAction:
-    def __init__(self, name: str, param_sorts: List[str], **kwargs):
+    def __init__(self, name: str, param_types: List[str], **kwargs):
         self.name = name
-        self.param_sorts = param_sorts
+        self.param_types = param_types
         self.precond:Set[LearnedLiftedFluent] = set() if "precond" not in kwargs else kwargs["precond"]
         self.add:Set[LearnedLiftedFluent] = set() if "add" not in kwargs else kwargs["add"]
         self.delete:Set[LearnedLiftedFluent] = set() if "delete" not in kwargs else kwargs["delete"]
@@ -63,24 +63,24 @@ class LearnedAction:
         return (
             isinstance(other, LearnedAction)
             and self.name == other.name
-            and self.param_sorts == other.param_sorts
+            and self.param_types == other.param_types
         )
 
     def __hash__(self):
-        # Order of param_sorts is important!
+        # Order of param_types is important!
         return hash(repr(self))
 
     def __repr__(self) -> str:
-        return f"({self.name} {' '.join(str(s) for s in self.param_sorts)})"
+        return f"({self.name} {' '.join(str(s) for s in self.param_types)})"
         
-    def update_param_sorts(self, index, sort):
+    def update_param_types(self, index, sort):
         """Updates the parameter sorts of the action.
 
         Args:
             index (int): The index of the parameter to be updated.
             sort (str): The new sort to be assigned to the parameter.
         """
-        self.param_sorts[index] = sort
+        self.param_types[index] = sort
 
     def update_precond(
         self, fluents: Union[LearnedLiftedFluent, Set[LearnedLiftedFluent]]
@@ -119,10 +119,10 @@ class LearnedAction:
             fluents = {fluents}
         self.delete.update(fluents)
     
-    def to_pddl_action(self, predicate_dict, sort_to_type_dict ):
+    def to_pddl_action(self, predicate_dict ):
         """Converts the learned action to a PDDL action.
         """
-        parameters = [TypedObject(f"?x{i+1}", sort_to_type_dict [sort]) for i, sort in enumerate(self.param_sorts)]
+        parameters = [TypedObject(f"?x{i}", t) for i, t in enumerate(self.param_types)]
         preconds = []
         for learned_pre in self.precond:
             atom = Atom(learned_pre.name, [f"?x{i}" for i in learned_pre.param_act_idx])

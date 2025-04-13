@@ -43,7 +43,7 @@ class ExecutabilityEvaluator:
             raise Exception("Invalid executability type")
         
     def get_cross_executabilities(self,action_sequence, debug=False):
-        if not self.domain:
+        if not self.learned_domain:
             raise Exception("Domain not initialized")
         if not self.gt_domain_filename:
             raise Exception("GT Domain not given")
@@ -68,7 +68,7 @@ class ExecutabilityEvaluator:
     
     def generate_action_seqs(self, domain_type, action_sequence, limit=None):
         if domain_type == 'l':
-            domain = self.domain
+            domain = self.learned_domain
         elif domain_type == 'gt':
             domain = self.gt_domain
         else:
@@ -135,7 +135,7 @@ class ExecutabilityEvaluator:
 
     def generate_action_seq(self,domain_type, type_objs, init_effs, init_visited, length, debug=False):
         if domain_type == 'l':
-            domain = self.domain
+            domain = self.learned_domain
         elif domain_type == 'gt':
             domain = self.gt_domain
         else:
@@ -200,7 +200,7 @@ class ExecutabilityEvaluator:
     
     def get_overall_executability(self,domain_type, action_sequence,_true_effs, _visited, debug=False):
         if domain_type == 'l':
-            domain = self.domain
+            domain = self.learned_domain
         elif domain_type == 'gt':
             domain = self.gt_domain
         else:
@@ -216,8 +216,9 @@ class ExecutabilityEvaluator:
         # we assume unvisited effects are true since all given action seqs are valid
         visited = _visited.copy()
         error_count = 0
-        for i, a in enumerate(action_sequence):
-            action = self.domain.get_action(a.name)
+        for i, step in enumerate(action_sequence):
+            a = step.action
+            action = domain.get_action(a.name)
             # if action not found, meaning it has not been learned properly, with no precond or effects
             # we skip it, and add error count by 1
             if not action:
@@ -265,7 +266,7 @@ class ExecutabilityEvaluator:
     
         
     def get_first_fail_executability(self,action_sequence, debug=False):
-        if not self.domain:
+        if not self.learned_domain:
             raise Exception("Domain not initialized")
         if (len(action_sequence)==0):
             raise Exception("Error checking executability: Length 0")
@@ -275,7 +276,7 @@ class ExecutabilityEvaluator:
         # we assume unvisited effects are true since all given action seqs are valid
         visited = set()
         for i, a in enumerate(action_sequence):
-            action = self.domain.get_action(a.name)
+            action = self.learned_domain.get_action(a.name)
             if not action:
                 raise KeyError(self.domain_filename)
 

@@ -19,12 +19,12 @@ class LOCM(OCM):
         print(f"Extracted sorts: {sorts}")
         
         obj_trace_list = self.trace_to_obj_trace(tracelist, sorts)
-        TS, OS, ap_state_pointers = self.get_TS_OS(obj_trace_list)
+        TS, OS, ap_state_pointers = self.get_TS_OS(obj_trace_list, sorts)
         if self.state_param:
             bindings = self.get_state_bindings()
         else:
             bindings = None
-        model = self.get_model(OS, ap_state_pointers, sorts, bindings, statics=None, debug=False, viz=False)
+        model = self.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False, viz=False)
         return model
 
 
@@ -121,13 +121,16 @@ class LOCM(OCM):
 
         return bindings
     
-    def get_model(self, OS, ap_state_pointers, sorts, bindings, statics=[], debug=False, viz= False):
+    def get_model(self, OS, ap_state_pointers, sorts, bindings, sort_to_type_dict=None, statics=[],  debug=False, viz= False):
         
         # delete zero-object if it's state machine was discarded
         if not OS[0]:
-         
+            
             del OS[0]
             del ap_state_pointers[0]
+            shift = 1
+        else:
+            shift = 0
 
 
         # all_aps = {action_name: [AP]}
@@ -136,6 +139,12 @@ class LOCM(OCM):
             for ap in aps:
                 all_aps[ap.action.name].add(ap)
         print(f"Extracted actions: {all_aps}")
+
+        def get_type(sort):
+            if sort_to_type_dict:
+                return sort_to_type_dict[sort]
+            else:
+                return f"s{sort}"
 
         if bindings:
             state_params = defaultdict(dict)
@@ -162,7 +171,7 @@ class LOCM(OCM):
         fluents = defaultdict(dict)
         actions = {}
         for sort in ap_state_pointers:
-            sort_str = f"sort{sort}"
+            type_str = get_type(sort)
             for ap in ap_state_pointers[sort]:
                 if ap.action.name not in actions:
                     actions[ap.action.name] = LearnedAction(
@@ -170,7 +179,7 @@ class LOCM(OCM):
                         [None for _ in range(len(all_aps[ap.action.name]))],  # type: ignore
                     )
                 a = actions[ap.action.name]
-                a.param_sorts[ap.pos - 1] = sort_str
+                a.param_types[ap.pos-shift] = type_str
 
                 start_pointer, end_pointer = ap_state_pointers[sort][ap]
                 start_state, end_state = LOCM._pointer_to_set(
@@ -181,8 +190,8 @@ class LOCM(OCM):
                 if start_fluent_name not in fluents[ap.action.name]:
                     start_fluent = LearnedLiftedFluent(
                         start_fluent_name,
-                        param_sorts=[sort_str],
-                        param_act_idx=[ap.pos - 1],
+                        param_types=[type_str],
+                        param_act_idx=[ap.pos-shift],
                     )
                     fluents[ap.action.name][start_fluent_name] = start_fluent
 
@@ -211,7 +220,7 @@ class LOCM(OCM):
                                 psort = hyp.G_
                                 pind = hyp.l_
                         if psort is not None:
-                            start_fluent.param_sorts.append(f"sort{psort}")
+                            start_fluent.param_types.append(get_type(psort))
                             start_fluent.param_act_idx.append(pind - 1)
 
                 a.update_precond(start_fluent)
@@ -221,8 +230,8 @@ class LOCM(OCM):
                     if end_fluent_name not in fluents[ap.action.name]:
                         end_fluent = LearnedLiftedFluent(
                             end_fluent_name,
-                            param_sorts=[sort_str],
-                            param_act_idx=[ap.pos - 1],
+                            param_types=[type_str],
+                            param_act_idx=[ap.pos-shift],
                         )
                         fluents[ap.action.name][end_fluent_name] = end_fluent
 
@@ -251,7 +260,7 @@ class LOCM(OCM):
                                     psort = hyp.G_
                                     pind = hyp.k_
                             if psort is not None:
-                                end_fluent.param_sorts.append(f"sort{psort}")
+                                end_fluent.param_types.append(get_type(psort))
                                 end_fluent.param_act_idx.append(pind - 1)
 
                     a.update_delete(start_fluent)
@@ -268,5 +277,5 @@ class LOCM(OCM):
             for fluent in action_fluents.values())
         actions = set(actions.values())
         types = OCM._sorts_to_types(sorts, None)
-        model = LearnedModel(fluents, actions, types, sort_to_type_dict= {1: 'block', 2: 'block', 0: 'zero'})
+        model = LearnedModel(fluents, actions, types)
         return model

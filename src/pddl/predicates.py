@@ -24,29 +24,29 @@ class Fluent:
 
 class LearnedLiftedFluent:
         
-        def __init__(self, name: str, param_sorts: List[int], param_act_idx: List[int],):
+        def __init__(self, name: str, param_types: List[int], param_act_idx: List[int],):
             self.name = name
-            self.param_sorts = param_sorts
+            self.param_types = param_types
             self.param_act_idx = param_act_idx
 
         def __hash__(self):
             return hash(repr(self))
         
         def __str__(self) -> str:
-            return f"{self.name} {' '.join(str(s) for s in self.param_sorts)}"
+            return f"{self.name} {' '.join(str(s) for s in self.param_types)}"
         
         def __repr__(self)-> str:
-            return f"{self.name} {' '.join(str(s) for s in self.param_sorts)}"
+            return f"{self.name} {' '.join(str(s) for s in self.param_types)}"
         
         def __eq__(self, other) -> bool:
             if not isinstance(other, LearnedLiftedFluent):
                 return False
             return self.name == other.name and hash(self) == hash(other)
         
-        def to_pddl_predicate(self, sort_to_type_dict ):
+        def to_pddl_predicate(self ):
             arguments = []
-            for i, sort in enumerate(self.param_sorts):
-                arg = TypedObject(f"?x{i}", sort_to_type_dict[sort])
+            for i, sort in enumerate(self.param_types):
+                arg = TypedObject(f"?x{i}", sort)
                 arguments.append(arg)
             return Predicate(self.name, arguments)
         
