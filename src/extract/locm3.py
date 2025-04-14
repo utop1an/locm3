@@ -26,7 +26,7 @@ class LOCM3(LOCM):
         for sort, TM in enumerate(TM_list):
             OSM_by_event = []
             for event, row in TM.iterrows():
-                ceA = self.get_ceA(TM, event)
+                ceA, self_included = self.get_ceA(TM, event)
                 osm = OSM(sort, event, ceA)
                 OSM_by_event.append(osm)
             OSM_list.append(OSM_by_event)
@@ -48,13 +48,19 @@ class LOCM3(LOCM):
         -------
         ceA : Set
             Set of events that are consecutively after the given event.
+        self_included : bool
+            True if the event itself is included in the set of events.
         """
         ceA = set()
+        self_included = False
         for i, row in TM.iterrows():
             for j, val in row.items():
-                if val == 1 and j!= event:
-                    ceA.add(j)
-        return ceA
+                if val == 1:
+                    if j == event:
+                        self_included = True
+                    else:
+                        ceA.add(j)
+        return ceA, self_included
     
     def OSM_to_action(self, OSM_list: List[List[OSM]], sorts: Dict):
         actions = {}
@@ -68,18 +74,18 @@ class LOCM3(LOCM):
                 else:
                     action = actions[event.action.name]
 
-                f1 = LearnedLiftedFluent(
+                fluent = LearnedLiftedFluent(
                     f"m{event.action.name}.{event.position}.1",
                     [sorts[obj] for i,obj in enumerate(event.action.obj_params) if i in event.position ],
                     [pos for pos in event.position],
                 )
-                f0 = LearnedLiftedFluent(
-                    f"m{event.action.name}.{event.position}.0",
-                    [sorts[obj] for i,obj in enumerate(event.action.obj_params) if i in event.position ],
-                    [pos for pos in event.position],
-                )
-                fluents.add(f1)
-                fluents.add(f0)
+                # f0 = LearnedLiftedFluent(
+                #     f"m{event.action.name}.{event.position}.0",
+                #     [sorts[obj] for i,obj in enumerate(event.action.obj_params) if i in event.position ],
+                #     [pos for pos in event.position],
+                # )
+                fluents.add(fluent)
+                # fluents.add(f0)
 
                 
                 action.update_precond(f0)
