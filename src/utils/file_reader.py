@@ -50,11 +50,11 @@ def read_step(step, index):
         state = None
     return Step(action, state, index)
 
-def read_plan(plan: str)-> Trace:
+def read_plan(plan: str, splitter= ",")-> Trace:
     """
     Parse trace from a plan string
     """
-    lines = plan.split("\n")
+    lines = plan.split(splitter)
     steps = []
     for i, line in enumerate(lines):
         if line.startswith(";"):
