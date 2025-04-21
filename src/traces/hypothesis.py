@@ -1,9 +1,10 @@
 from .event import Event
 from .fsm import FSM
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import Dict, Set
 from collections import defaultdict
 
+@dataclass
 class HIndex:
 
     B: Event
@@ -14,6 +15,7 @@ class HIndex:
     def __hash__(self):
         return hash((self.B, self.k, self.C, self.l))
 
+@dataclass
 class HItem:
     S: int
     k_: int
@@ -21,11 +23,12 @@ class HItem:
     G: int
     G_: int
     supported: bool
-    fsm: FSM
+    fsm: FSM = None
 
     def __hash__(self):
         return hash((self.S, self.k_, self.l_, self.G, self.G_))
     
+@dataclass
 class Hypothesis:
     S: int
     B: Event

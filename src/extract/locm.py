@@ -25,7 +25,7 @@ class LOCM(OCM):
         obj_trace_list = self.trace_to_obj_trace(tracelist, sorts)
         TS, OS, ap_state_pointers = self.get_TS_OS(obj_trace_list, sorts)
         if self.state_param:
-            bindings = self.get_state_bindings()
+            bindings = self.get_state_bindings(TS, ap_state_pointers, OS, sorts, debug=self.debug)
         else:
             bindings = None
         model = self.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False, viz=False)
@@ -119,13 +119,17 @@ class LOCM(OCM):
         return TS, OS, ap_state_pointers
     
 
-    def get_state_bindings():
-        bindings = defaultdict(dict)
+    def get_state_bindings(self,TS, ap_state_pointers, OS, sorts, debug=False):
+        hs = self._step3(TS, ap_state_pointers, OS, sorts, debug)
+        bindings = self._step4(hs, debug)
+        # remove parameter flaws
+        bindings = self._step5(hs, bindings, debug)
 
 
         return bindings
     
     def _step3(
+        self,
         TS: TransitionSet,
         ap_state_pointers: EventStatePointers,
         OS: ObjectStates,
@@ -134,7 +138,7 @@ class LOCM(OCM):
     ) -> Hypothesis:
         """Step 3: Induction of parameterised FSMs"""
 
-        zero_obj = LOCM.zero_obj
+        zero_obj = LOCM.ZEROOBJ
 
         # indexed by B.k and C.l for 3.2 matching hypotheses against transitions
         HS: Dict[HIndex, Set[HItem]] = defaultdict(set)
@@ -219,7 +223,7 @@ class LOCM(OCM):
         return Hypothesis.from_dict(HS)
     
 
-    def _step4(HS: Hypothesis, debug: bool = False) -> Bindings:
+    def _step4(self,HS: Hypothesis, debug: bool = False) -> Bindings:
         """Step 4: Creation and merging of state parameters"""
         # bindings = {sort: {state: [(hypothesis, state param)]}}
         bindings: LOCM.Bindings = defaultdict(dict)
@@ -281,6 +285,7 @@ class LOCM(OCM):
         return dict(bindings)
     
     def _step5(
+        self,
         HS: Hypothesis,
         bindings: Bindings,
         debug: bool = False,
@@ -305,7 +310,7 @@ class LOCM(OCM):
                         # remove all bindings referencing P
                         for h, P_ in bindings[sort][state_id].copy():
                             if P_ == P:
-                                bindings[sort][state_id].remove(Binding(h, P_))
+                                bindings[sort][state_id].remove(LOCM.Binding(h, P_))
                         if len(bindings[sort][state_id]) == 0:
                             del bindings[sort][state_id]
 
