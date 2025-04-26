@@ -90,8 +90,6 @@ class OCM(ABC):
         types = {}
         return types
 
-        
-
     @staticmethod
     def _pointer_to_set(states: List[Set], pointer1, pointer2 = None):
         """

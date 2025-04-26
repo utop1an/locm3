@@ -7,7 +7,7 @@ import pandas as pd
 
 class LOCM(OCM):
 
-    TransitionSet = set[Event] | Dict[int, Dict[TypedObject, List[Event]]]
+    TransitionSet = Dict[int, Dict[TypedObject, List[Event]]]
     ObjectStates = Dict[int, List[Set[int]]]
     EventStatePointers = Dict[int, Dict[Event, StatePointers]]
     Binding = NamedTuple("Binding", [("hypothesis", Hypothesis), ("param", int)])
@@ -17,10 +17,9 @@ class LOCM(OCM):
         super().__init__(state_param, timeout, debug)
         
 
-    def extract_model(self, tracelist, sorts=None)-> LearnedModel:
+    def extract_model(self, tracelist, types=None)-> LearnedModel:
         
-        sorts, sort_to_type_dict = self._get_sorts(tracelist, sorts)
-        print(f"Extracted sorts: {sorts}")
+        sorts, sort_to_type_dict = self._get_sorts(tracelist, types)
         
         obj_trace_list = self.trace_to_obj_trace(tracelist, sorts)
         TS, OS, ap_state_pointers = self.get_TS_OS(obj_trace_list, sorts)
@@ -124,7 +123,6 @@ class LOCM(OCM):
         bindings = self._step4(hs, debug)
         # remove parameter flaws
         bindings = self._step5(hs, bindings, debug)
-
 
         return bindings
     
