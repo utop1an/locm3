@@ -1,7 +1,17 @@
 
 class FSM:
-    sort: int
-    index: int
+
+    def __init__(self, sort: int, index: int):
+        """Initializes a FSM with a sort and an index.
+
+        Args:
+            sort (int):
+                The sort of the FSM.
+            index (int):
+                The index of the FSM.
+        """
+        self.sort = sort
+        self.index = index
 
     def __repr__(self):
         return f"S{self.sort}F{self.index}"
@@ -15,4 +25,4 @@ class FSM:
     def __eq__(self, other):
         if not isinstance(other, FSM):
             return False
-        return self.sort == other.sort and self.index == other.index
+        return hash(self) == hash(other)

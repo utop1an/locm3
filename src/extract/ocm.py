@@ -15,10 +15,11 @@ class OCM(ABC):
     ObjectTrace= Dict[TypedObject, List[Event]] 
     ZEROOBJ = TypedObject("zero","zero")
 
-    def __init__(self,state_param:bool=True, timeout:int = 600, debug: Dict[str, bool]=None):
+    def __init__(self,state_param:bool=True,viz=False, timeout:int = 600, debug: Dict[str, bool]=None):
         self.state_param = state_param
         self.timeout = timeout
         self.debug = debug
+        self.viz = viz
 
     @abstractmethod
     def extract_model(self):
@@ -107,6 +108,47 @@ class OCM(ABC):
         assert state1 is not None, f"Pointer ({pointer1}) not in states: {states}"
         assert state2 is not None, f"Pointer ({pointer2}) not in states: {states}"
         return state1, state2
+    
+    @staticmethod
+    def _debug_state_machines(OS, ap_state_pointers, state_params):
+        import os
+
+        import networkx as nx
+
+        for sort in OS:
+            G = nx.DiGraph()
+            for n in range(len(OS[sort])):
+                lbl = f"state{n}"
+                if (
+                    state_params is not None
+                    and sort in state_params
+                    and n in state_params[sort]
+                ):
+                    lbl += str(
+                        [
+                            state_params[sort][n][v]
+                            for v in sorted(state_params[sort][n].keys())
+                        ]
+                    )
+                G.add_node(n, label=lbl, shape="oval")
+            for ap, apstate in ap_state_pointers[sort].items():
+                start_idx, end_idx = OCM._pointer_to_set(
+                    OS[sort], apstate.start, apstate.end
+                )
+                # check if edge is already in graph
+                if G.has_edge(start_idx, end_idx):
+                    # append to the edge label
+                    G.edges[start_idx, end_idx][
+                        "label"
+                    ] += f"\n{ap.action.name}.{ap.pos}"
+                else:
+                    G.add_edge(start_idx, end_idx, label=f"{ap.action.name}.{ap.pos}")
+            # write to dot file
+            nx.drawing.nx_pydot.write_dot(G, f"LOCM-step7-sort{sort}.dot")
+            os.system(
+                f"dot -Tpng LOCM-step7-sort{sort}.dot -o LOCM-step7-sort{sort}.png"
+            )
+            os.system(f"rm LOCM-step7-sort{sort}.dot")
     
 
     

@@ -33,7 +33,7 @@ class LearnedLiftedFluent:
             return hash(repr(self))
         
         def __str__(self) -> str:
-            return f"{self.name} {' '.join(str(s) for s in self.param_types)}"
+            return f"{self.name} {' '.join(str(s) for s in self.param_types)} [{' '.join(str(s) for s in self.param_act_idx)}]"
         
         def __repr__(self)-> str:
             return f"{self.name} {' '.join(str(s) for s in self.param_types)}"

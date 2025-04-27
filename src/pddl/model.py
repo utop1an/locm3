@@ -26,7 +26,7 @@ class LearnedModel:
      
         types.extend(self.types)
         type_dict = {t.name: t for t in types}
-        print(types)
+
 
         predicates = []
         for fluent in self.fluents:

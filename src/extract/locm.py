@@ -13,8 +13,8 @@ class LOCM(OCM):
     Binding = NamedTuple("Binding", [("hypothesis", Hypothesis), ("param", int)])
     Bindings = Dict[int, Dict[int, List[Binding]]]  # {sort: {state: [Binding]}}
 
-    def __init__(self, state_param:bool=True, timeout:int=600, debug: Dict[str, bool]=None):
-        super().__init__(state_param, timeout, debug)
+    def __init__(self, state_param:bool=True, viz=False, timeout:int=600, debug: Dict[str, bool]=None):
+        super().__init__(state_param,viz, timeout, debug)
         
 
     def extract_model(self, tracelist, types=None)-> LearnedModel:
@@ -27,7 +27,7 @@ class LOCM(OCM):
             bindings = self.get_state_bindings(TS, ap_state_pointers, OS, sorts, debug=self.debug)
         else:
             bindings = None
-        model = self.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False, viz=False)
+        model = self.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False)
         return model
 
 
@@ -51,10 +51,13 @@ class LOCM(OCM):
                     # add the step for the zero-object
                     obj_traces[zero_obj].append(SingletonEvent(action, pos=0, sort=0))
                     # for each combination of action name A and argument pos P
+                    added_objs = []
                     for j, obj in enumerate(action.obj_params):
                         # create transition A.P
+                        assert obj not in added_objs, "LOCMv1 cannot handle duplicate objects in the same action."
                         ap = SingletonEvent(action, pos=j + 1, sort=sorts[obj.name])
                         obj_traces[obj].append(ap)
+                        added_objs.append(obj)
         obj_traces_list.append(obj_traces)
         return obj_traces_list
     
@@ -122,7 +125,7 @@ class LOCM(OCM):
         hs = self._step3(TS, ap_state_pointers, OS, sorts, debug)
         bindings = self._step4(hs, debug)
         # remove parameter flaws
-        bindings = self._step5(hs, bindings, debug)
+        bindings = self._step5(hs, bindings, ap_state_pointers, OS, debug)
 
         return bindings
     
@@ -143,6 +146,7 @@ class LOCM(OCM):
 
         # 3.1: Form hypotheses from state machines
         for G, sort_ts in TS.items():
+            
             # for each O ∈ O_u (not including the zero-object)
             for obj, seq in sort_ts.items():
                 if obj == zero_obj:
@@ -162,6 +166,7 @@ class LOCM(OCM):
                         if k_ == k:
                             continue
                         G_ = sorts[Bk_.name]
+
                         for j, Cl_ in enumerate(C.action.obj_params):
                             l_ = j + 1
                             if l_ == l:
@@ -213,7 +218,7 @@ class LOCM(OCM):
         for hind, hs in HS.copy().items():
             for h in hs.copy():
                 if not h.supported:
-                    hs.remove(h)
+                    HS[hind].remove(h)
             if len(hs) == 0:
                 del HS[hind]
 
@@ -286,47 +291,58 @@ class LOCM(OCM):
         self,
         HS: Hypothesis,
         bindings: Bindings,
+        ap_state_pointers: EventStatePointers,
+        OS: ObjectStates,
         debug: bool = False,
     ) -> Bindings:
         """Step 5: Removing parameter flaws"""
 
         # check each bindings[G][S] -> (h, P)
-        for sort, hs_sort in HS.items():
-            for state_id in hs_sort:
+        for fsm, hs_fsm in HS.items():
+            for state, hs in hs_fsm.items():
+
                 # track all the h.Bs that occur in bindings[G][S]
-                all_hB = set()
+                pointers = OS[fsm][state]
+                # TODO: locm only checks for inaps, but outaps?
+                inaps = set(ap for ap, (start, end) in ap_state_pointers[fsm].items() if end in pointers)
+                outaps = set(ap for ap, (start, end) in ap_state_pointers[fsm].items() if start in pointers)        
+                
                 # track the set of h.B that set parameter P
                 sets_P = defaultdict(set)
-                for h, P in bindings[sort][state_id]:
-                    sets_P[P].add(h.B)
-                    all_hB.add(h.B)
-
+              
+                for h, P in bindings[fsm][state]:
+                    sets_P[P].add(h)
+                    
                 # for each P, check if there is a transition h.B that never sets parameter P
                 # i.e. if sets_P[P] != all_hB
                 for P, setby in sets_P.items():
-                    if not setby == all_hB:  # P is a flawed parameter
+                    flag = True
+                    for ap in inaps:
+                        candidate_hs = {h for h in hs if h.B == ap}
+                    
+                        if len(candidate_hs) == 0:
+                            flag = False
+                            break
+                        if len(candidate_hs.intersection(setby))==0:
+                            flag = False
+                            break
+                    if flag:
+                        for ap in outaps:
+                            candidate_hs = {h for h in hs if h.C == ap}
+                            if len(candidate_hs) == 0:
+                                flag = False
+                                break
+                            if len(candidate_hs.intersection(setby))==0:
+                                flag = False
+                                break
+                    if not flag:  # P is a flawed parameter
                         # remove all bindings referencing P
-                        for h, P_ in bindings[sort][state_id].copy():
+                        for h, P_ in bindings[fsm][state].copy():
                             if P_ == P:
-                                bindings[sort][state_id].remove(LOCM.Binding(h, P_))
-                        if len(bindings[sort][state_id]) == 0:
-                            del bindings[sort][state_id]
+                                bindings[fsm][state].remove(LOCM.Binding(h, P_))
+                        if len(bindings[fsm][state]) == 0:
+                            del bindings[fsm][state]
 
-                # do the same for checking h.C reading parameter P
-                # See https://github.com/AI-Planning/macq/discussions/200
-                all_hC = set()
-                reads_P = defaultdict(set)
-                if state_id in bindings[sort]:
-                    for h, P in bindings[sort][state_id]:
-                        reads_P[P].add(h.C)
-                        all_hC.add(h.C)
-                    for P, readby in reads_P.items():
-                        if not readby == all_hC:
-                            for h, P_ in bindings[sort][state_id].copy():
-                                if P_ == P:
-                                    bindings[sort][state_id].remove(LOCM.Binding(h, P_))
-                            if len(bindings[sort][state_id]) == 0:
-                                del bindings[sort][state_id]
 
         for k, v in bindings.copy().items():
             if not v:
@@ -334,7 +350,7 @@ class LOCM(OCM):
 
         return bindings
     
-    def get_model(self, OS, ap_state_pointers, sorts, bindings, sort_to_type_dict=None, statics=[],  debug=False, viz= False):
+    def get_model(self, OS, ap_state_pointers, sorts, bindings, sort_to_type_dict=None, statics=[],  debug=False):
         
         # delete zero-object if it's state machine was discarded
         if not OS[0]:
@@ -351,7 +367,6 @@ class LOCM(OCM):
         for aps in ap_state_pointers.values():
             for ap in aps:
                 all_aps[ap.action.name].add(ap)
-        print(f"Extracted actions: {all_aps}")
 
         def get_type(sort):
             if sort_to_type_dict:
@@ -359,8 +374,8 @@ class LOCM(OCM):
             else:
                 return f"s{sort}"
 
+        state_params = defaultdict(dict)
         if bindings:
-            state_params = defaultdict(dict)
             state_params_to_hyps = defaultdict(dict)
             for sort in bindings:
                 state_params[sort] = defaultdict(dict)
@@ -377,8 +392,7 @@ class LOCM(OCM):
                         state_params[sort][state][key] = hyps[0].G_
                         state_params_to_hyps[sort][state][key] = hyps
 
-        if viz:
-            raise NotImplementedError("Visualization is not implemented yet.")
+        if self.viz:
             LOCM._debug_state_machines(OS, ap_state_pointers, state_params)
 
         fluents = defaultdict(dict)
@@ -400,15 +414,16 @@ class LOCM(OCM):
                 )
 
                 start_fluent_name = f"sort{sort}_state{start_state}"
-                if start_fluent_name not in fluents[ap.action.name]:
+              
+                if start_fluent_name not in fluents[ap]:
                     start_fluent = LearnedLiftedFluent(
                         start_fluent_name,
                         param_types=[type_str],
                         param_act_idx=[ap.pos-shift],
                     )
-                    fluents[ap.action.name][start_fluent_name] = start_fluent
+                    fluents[ap][start_fluent_name] = start_fluent
 
-                start_fluent = fluents[ap.action.name][start_fluent_name]
+                start_fluent = fluents[ap][start_fluent_name]
 
                 if (
                     bindings and 
@@ -434,21 +449,22 @@ class LOCM(OCM):
                                 pind = hyp.l_
                         if psort is not None:
                             start_fluent.param_types.append(get_type(psort))
-                            start_fluent.param_act_idx.append(pind - 1)
+                            start_fluent.param_act_idx.append(pind - shift)
 
                 a.update_precond(start_fluent)
 
                 if end_state != start_state:
                     end_fluent_name = f"sort{sort}_state{end_state}"
-                    if end_fluent_name not in fluents[ap.action.name]:
+                    if end_fluent_name not in fluents[ap]:
                         end_fluent = LearnedLiftedFluent(
                             end_fluent_name,
                             param_types=[type_str],
                             param_act_idx=[ap.pos-shift],
                         )
-                        fluents[ap.action.name][end_fluent_name] = end_fluent
+                        fluents[ap][end_fluent_name] = end_fluent
 
-                    end_fluent = fluents[ap.action.name][end_fluent_name]
+                    end_fluent = fluents[ap][end_fluent_name]
+
 
                     if (
                         bindings and 
@@ -474,7 +490,7 @@ class LOCM(OCM):
                                     pind = hyp.k_
                             if psort is not None:
                                 end_fluent.param_types.append(get_type(psort))
-                                end_fluent.param_act_idx.append(pind - 1)
+                                end_fluent.param_act_idx.append(pind - shift)
 
                     a.update_delete(start_fluent)
                     a.update_add(end_fluent)

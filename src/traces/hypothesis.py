@@ -64,3 +64,18 @@ class Hypothesis:
                 hsitem_dict.pop("supported")
                 HS[hsitem.G][hsitem.S].add(Hypothesis(**{**hsind, **hsitem_dict}))
         return HS
+    
+    def from_dict_fsm(
+        hs: Dict[HIndex, Set[HItem]]
+    ) -> Dict[FSM, Dict[int, Set["Hypothesis"]]]:
+        """Converts a dict of HSIndex -> HSItem to a dict of FSM -> S -> Hypothesis"""
+        HS: Dict[FSM, Dict[int, Set["Hypothesis"]]] = defaultdict(
+            lambda: defaultdict(set)
+        )
+        for hsind, hsitems in hs.items():
+            hsind = hsind.__dict__
+            for hsitem in hsitems:
+                hsitem_dict = hsitem.__dict__
+                hsitem_dict.pop("supported")
+                HS[hsitem.fsm][hsitem.S].add(Hypothesis(**{**hsind, **hsitem_dict}))
+        return HS

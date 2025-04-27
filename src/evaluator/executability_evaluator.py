@@ -14,7 +14,7 @@ from pddl_parser import open
 random.seed(42)
 
 class ExecutabilityEvaluator:
-    def __init__(self, learned_domain, executability_type='cross' , gt_domain_filename=None) -> None:
+    def __init__(self, learned_domain, executability_type='cross' , gt_domain_filename=None, debug=False) -> None:
         self.learned_domain = learned_domain
         if (gt_domain_filename):
             try:
@@ -22,6 +22,7 @@ class ExecutabilityEvaluator:
             except Exception as e:
                 raise Exception(f"Error initializing task: {e}")
         self.executability_type = executability_type
+        self.debug = debug
 
     def initialize_task(self):
         gt_domain = open(self.gt_domain_filename)
@@ -198,7 +199,7 @@ class ExecutabilityEvaluator:
         return action_seqs
 
     
-    def get_overall_executability(self,domain_type, action_sequence,_true_effs, _visited, debug=False):
+    def get_overall_executability(self,domain_type, action_sequence,_true_effs, _visited):
         if domain_type == 'l':
             domain = self.learned_domain
         elif domain_type == 'gt':
@@ -244,7 +245,7 @@ class ExecutabilityEvaluator:
             # not applicable
             if(len(invalid)>0):
                 error_count += 1
-                if debug:
+                if self.debug:
                     print(f"action {op} not executable")
                     print("preconditions not satisfied: ", invalid)
 
@@ -258,8 +259,8 @@ class ExecutabilityEvaluator:
             true_effs = true_effs.union(adds)
             true_effs.difference_update(dels)
 
-            if debug:
-                print(f"action {op} executed")
+            # if self.debug:
+            #     print(f"action {op} executed")
                 
         return 1-error_count/len(action_sequence)
 

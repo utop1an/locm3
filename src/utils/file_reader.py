@@ -6,7 +6,7 @@ Plans should be in the form of:
 """
 
 from pddl import ActionSignature, TypedObject
-from traces.trace import Trace, Step
+
 
 def parse_action(action):
     a = action.strip().strip("()").split(" ")
@@ -42,6 +42,7 @@ def parse_state(predicates):
     return State()
 
 def read_step(step, index):
+    from traces import Step
     tmp = step.split(', ')
     action = parse_action(tmp[0])
     if len(tmp) >1:
@@ -50,7 +51,8 @@ def read_step(step, index):
         state = None
     return Step(action, state, index)
 
-def read_plan(plan: str, splitter= ",")-> Trace:
+def read_plan(plan: str, splitter= ","):
+    from traces import Trace
     """
     Parse trace from a plan string
     """
@@ -62,7 +64,8 @@ def read_plan(plan: str, splitter= ",")-> Trace:
         steps.append(read_step(line, i))
     return Trace(steps)
 
-def read_plan_file(file_path)->Trace:
+def read_plan_file(file_path):
+    from traces import Trace
     """
     Parse trace from a plan file
     """
