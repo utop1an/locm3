@@ -1,6 +1,7 @@
 from IPython.display import display, HTML
 from tabulate import tabulate
 from typing import List, Set
+from collections import defaultdict
 import numpy as np
 import math
 import random
@@ -14,6 +15,9 @@ def pprint_list(lst: List):
      for item in lst:
         print(item, end=", ")
      print("")
+
+def default_dict_factory(inner):
+    return defaultdict(list)
 
 def check_well_formed(df):
     # Early exit if the matrix is full of zeros
@@ -37,20 +41,19 @@ def check_well_formed(df):
                     return False  # If holes are found, it's not well-formed
     return True  # If no issues are found, it's well-formed
 
-def check_valid(subset_df, valid_pairs):
-    arr = subset_df.to_numpy()
+def check_valid(subset_df, example_sequences):
     index = subset_df.index
-    for i in range(arr.shape[0]):
-        for j in range(arr.shape[1]):
-            if arr[i, j] > 0:
-                # for each pair of transtion <t1,t2> in M
-                ordered_pair = (index[i], index[j])
-                if ordered_pair not in valid_pairs:
-                    return False
+
+    valid_example_sequences = [ [event for event in seq if event in index ] for seq in example_sequences]
+    for seq in valid_example_sequences:
+        for i in range(len(seq)-1):
+            if subset_df.loc[seq[i], seq[i+1]] == 0:
+                return False
+    
     return True
 
 
-def compute_flex(self, cm):
+def compute_flex(cm):
         """
         The flex of a poset, or the coverage of poset:
             flex = 1 - cp/tp
@@ -160,4 +163,4 @@ def get_potrace(cm, dod, to_trace, reorder):
 def convert_trace_to_potrace(to_trace, input_dod, strict=True, reorder=True):
     to_cm = get_to_comparable_matrix(to_trace)
     po_cm, output_dod = get_po_comparable_matrix(input_dod, to_cm, strict)
-    return get_potrace(po_cm, output_dod, to_trace)
+    return get_potrace(po_cm, output_dod, to_trace, reorder)

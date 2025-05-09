@@ -1,4 +1,4 @@
-from .ocm import OCM, TypedObject, SingletonEvent, StatePointers
+from .ocm import OCM, TypedObject, Event, StatePointers
 from typing import Dict, List, Tuple, Set, NamedTuple
 from traces import Hypothesis, HIndex, HItem, FSM
 from pddl import ActionSignature, LearnedModel, LearnedLiftedFluent, LearnedAction
@@ -7,18 +7,16 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 from itertools import combinations
-from utils import pprint_table, check_well_formed, check_valid, default_dict_factory
+from utils import pprint_table, check_well_formed, check_valid
 
 class LOCM2(OCM):
 
-    TransitionSet = Dict[FSM, Dict[TypedObject, List[List[SingletonEvent]]]]
+    TransitionSet = Dict[FSM, Dict[TypedObject, List[Event]]]
     ObjectStates = Dict[FSM, List[Set[int]]]
-    EventStatePointers = Dict[FSM, Dict[SingletonEvent, StatePointers]]
+    EventStatePointers = Dict[FSM, Dict[Event, StatePointers]]
     Hypothese = Dict[FSM, Dict[int, Set["Hypothesis"]]]
     Binding = NamedTuple("Binding", [("hypothesis", Hypothesis), ("param", int)])
     Bindings = Dict[FSM, Dict[int, List[Binding]]]
-
-
 
     def __init__(self, state_param:bool=True, viz=False, timeout:int=600, debug: Dict[str, bool]=None):
         super().__init__(state_param, viz, timeout, debug)
@@ -27,14 +25,19 @@ class LOCM2(OCM):
         
         sorts, sort_to_type_dict = self._get_sorts(trace_list, types)
         
-        obj_traces, TM_list = self.trace_to_obj_trace(trace_list, sorts)
-        transition_sets_per_sort_list = self.split_transitions(TM_list, obj_traces, sorts)
-        TS, OS, ap_state_pointers = self.get_TS_OS(obj_traces, transition_sets_per_sort_list, TM_list, sorts)
+        obj_traces_list, TM_list = self.trace_to_obj_trace(trace_list, sorts)
+        print("1")
+        transition_sets_per_sort_list = self.split_transitions(TM_list, obj_traces_list, sorts)
+        print("2")
+        TS, OS, ap_state_pointers = self.get_TS_OS(obj_traces_list, transition_sets_per_sort_list, TM_list, sorts)
+        print("3")
         if self.state_param:
             bindings = self.get_state_bindings(TS, ap_state_pointers, OS, sorts,TM_list, debug=self.debug)
         else:
             bindings = None
+        print("4")
         model = self.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False)
+        print("5")
         return model
     
 
@@ -60,19 +63,23 @@ class LOCM2(OCM):
                 action = step.action
                 if action is not None:
                     # add the step for the zero-object
-                    zero_event = SingletonEvent(action, pos=0, sort=0)
+                    zero_event = Event(action, pos=[0], sort=[0])
                     obj_traces[zero_obj].append(zero_event)
                     graphs[0].add_node(zero_event)
                     # for each combination of action name A and argument pos P
-                    added_objs = []
+                    
+                    position_map = defaultdict(list)
+                    
+                    # there might be duplicate param in the same action
                     for j, obj in enumerate(action.obj_params):
-                        # create transition A.P
-                        assert obj not in added_objs, "LOCMv1 cannot handle duplicate objects in the same action."
-
-                        event = SingletonEvent(action, pos=j + 1, sort=sorts[obj.name])
+                        position_map[obj.name].append(j+1)
+                    
+                    for obj_name, positions in position_map.items():
+                        sort = sorts[obj_name]
+                        event = Event(action, pos=positions, sort=sort)
                         obj_traces[obj].append(event)
-                        graphs[sorts[obj.name]].add_node(event)
-                        added_objs.append(obj)
+                        graphs[sort].add_node(event)
+
         obj_traces_list.append(obj_traces)
 
         TM_list = []
@@ -89,12 +96,7 @@ class LOCM2(OCM):
                 print(f"Transition matrix for sort {sort}:")
                 pprint_table(TM)
 
-        grouped_obj_traces = defaultdict(list)
-        for obj_traces in obj_traces_list:
-            for obj, seq in obj_traces.items():
-                grouped_obj_traces[obj].append(seq)
-
-        return grouped_obj_traces, TM_list
+        return obj_traces_list, TM_list
     
     def split_transitions(self, TM_list, obj_traces_list, sorts)-> List[pd.DataFrame]:
         TM_list_with_holes = self.find_holes(TM_list)
@@ -145,7 +147,7 @@ class LOCM2(OCM):
 
         return TM_list_with_holes
     
-    def extract_holes(self, TM_list_with_holes)-> List[Set[Tuple[SingletonEvent, SingletonEvent]]]:
+    def extract_holes(self, TM_list_with_holes)-> List[Set[Tuple[Event, Event]]]:
         holes_per_sort_list  = []
         for sort, TM_with_holes in enumerate(TM_list_with_holes):
             if sort == 0:
@@ -169,14 +171,15 @@ class LOCM2(OCM):
             transitions_per_sort_list.append(TM_with_holes.columns.values)
         return transitions_per_sort_list
     
-    def get_example_sequences(self,obj_traces, sorts):
+    def get_example_sequences(self,obj_traces_list, sorts):
         example_sequences_per_sort = defaultdict(list)
         
-        for obj,obj_traces in obj_traces.items():
-            for trace in obj_traces:
+        for obj_trace in obj_traces_list:
+            example_sequence = []
+            for obj, seq in obj_trace.items():
                 if obj == OCM.ZEROOBJ:
                     continue
-                example_sequences_per_sort[sorts[obj.name]].append(trace)
+                example_sequences_per_sort[sorts[obj.name]].append(seq)
         return example_sequences_per_sort
     
     def get_transition_sets(
@@ -252,30 +255,33 @@ class LOCM2(OCM):
 
         return transition_sets_per_sort_list
     
-    def get_TS_OS(self, obj_traces, transition_sets_per_sort_list, TM_list, sorts: OCM.SortDict, debug=False):
-        TS: LOCM2.TransitionSet = defaultdict(lambda: defaultdict(list))
+    def get_TS_OS(self, obj_traces_list, transition_sets_per_sort_list, TM_list, sorts: OCM.SortDict, debug=False):
+        TS_list: List[LOCM2.TransitionSet] = []
+        
         OS: LOCM2.ObjectStates = defaultdict(list)
         event_state_pointers: LOCM2.EventStatePointers = defaultdict(dict)
 
         zero_obj = OCM.ZEROOBJ
         zero_fsm = FSM(0,0)
 
-        for obj, traces in obj_traces.items():
-            for trace in traces:
+        for obj_traces in obj_traces_list:
+            TS: LOCM2.TransitionSet = defaultdict(dict)
+            for obj, seq in obj_traces.items():
                 if obj != zero_obj:
                     for sort_, transition_sets in enumerate(transition_sets_per_sort_list):
                         for fsm_no, transitions in enumerate(transition_sets):
-                        
+                            
                             sort = sorts[obj.name]
                             if (sort == sort_):
-                                subseq = [x for x in trace if x in transitions]
+                                subseq = [x for x in seq if x in transitions]
                                 
                                 fsm = FSM(sort, fsm_no)
                         
-                                TS[fsm][obj].append(subseq)
+                                TS[fsm][obj] = subseq
                 else:
-                    TS[zero_fsm][zero_obj].append(trace)
+                    TS[zero_fsm][zero_obj] = seq
 
+            TS_list.append(dict(TS))
 
          # initialize ap_state_pointers and OS      
         for sort, transition_sets in enumerate(transition_sets_per_sort_list):
@@ -318,20 +324,19 @@ class LOCM2(OCM):
             event_state_pointers[zero_fsm] = {}
             OS[zero_fsm] = []
         
-        return TS, OS, event_state_pointers
+        return TS_list, OS, event_state_pointers
     
 
-    def get_state_bindings(self,TS, ap_state_pointers, OS, sorts, TM_list, debug=False):
-        hs = self._step3(TS, ap_state_pointers, OS, sorts,TM_list, debug)
+    def get_state_bindings(self,TS_list, ap_state_pointers, OS, sorts, TM_list, debug=False):
+        hs = self._step3(TS_list, ap_state_pointers, OS, sorts,TM_list, debug)
         bindings = self._step4(hs, debug)
         # remove parameter flaws
         bindings = self._step5(hs, bindings, ap_state_pointers, OS, debug)
-
         return bindings
     
     def _step3(
         self,
-        TS: TransitionSet,
+        TS_list: TransitionSet,
         ap_state_pointers: EventStatePointers,
         OS: ObjectStates,
         sorts: OCM.SortDict,
@@ -341,22 +346,19 @@ class LOCM2(OCM):
         """Step 3: Induction of parameterised FSMs"""
 
         zero_obj = LOCM2.ZEROOBJ
-        
+
         # indexed by B.k and C.l for 3.2 matching hypotheses against transitions
         HS: Dict[HIndex, Set[HItem]] = defaultdict(set)
 
         # 3.1: Form hypotheses from state machines
-        
-        for fsm, fsm_ts in TS.items():
-            
-            G = fsm.sort
-            # for each O ∈ O_u (not including the zero-object)
-            for obj, seqs in fsm_ts.items():
-               
-                if obj == zero_obj:
-                    continue
-                # for each pair of transitions B.k and C.l consecutive for O
-                for seq in seqs:
+        for TS in TS_list:
+            for fsm, sort_ts in TS.items():
+                G = fsm.sort
+                # for each O ∈ O_u (not including the zero-object)
+                for obj, seq in sort_ts.items():
+                    if obj == zero_obj:
+                        continue
+                    # for each pair of transitions B.k and C.l consecutive for O
                     for B, C in zip(seq, seq[1:]):
                         # skip if B or C only have one parameter, since there is no k' or l' to match on
                         if len(B.action.obj_params) == 1 or len(C.action.obj_params) == 1:
@@ -367,22 +369,28 @@ class LOCM2(OCM):
                         k = B.pos
                         l = C.pos
 
-                        # check each pair B.k' and C.l'
+                        Bk_map = defaultdict(list)
                         for i, Bk_ in enumerate(B.action.obj_params):
-                            k_ = i + 1
+                            Bk_map[Bk_.name].append(i+1)
+                        Cl_map = defaultdict(list)
+                        for j, Cl_ in enumerate(C.action.obj_params):
+                            Cl_map[Cl_.name].append(j+1)
+
+                        # check each pair B.k' and C.l'
+                        for Bk_, k_ in Bk_map.items():
                             if k_ == k:
                                 continue
-                            G_ = sorts[Bk_.name]
+                            G_ = sorts[Bk_]
 
-                            for j, Cl_ in enumerate(C.action.obj_params):
-                                l_ = j + 1
+                            for Cl_, l_ in Cl_map.items():
                                 if l_ == l:
                                     continue
 
                                 # check that B.k' and C.l' are of the same sort
-                                if sorts[Cl_.name] == G_:
+                                if sorts[Cl_] == G_:
                                     # check that end(B.P) = start(C.P)
                                     # NOTE: just a sanity check, should never fail
+
                                     S, S2 = LOCM2._pointer_to_set(
                                         OS[fsm],
                                         ap_state_pointers[fsm][B].end,
@@ -391,20 +399,20 @@ class LOCM2(OCM):
                                     assert (
                                         S == S2
                                     ), f"end(B.P) != start(C.P)\nB.P: {B}\nC.P: {C}"
+
                                     # save the hypothesis in the hypothesis set
                                     HS[HIndex(B, k, C, l)].add(
                                         HItem(S, k_, l_, G, G_, supported=False, fsm=fsm)
                                     )
-
+        print({"4.1.1"})
         # 3.2: Test hypotheses against sequence
-       
-        for fsm, fsm_ts in TS.items():
-            # for each O ∈ O_u (not including the zero-object)
-            for obj, seqs in fsm_ts.items():
-                if obj == zero_obj:
-                    continue
-                for seq in seqs:
-                # for each pair of transitions Ap.m and Aq.n consecutive for O
+        for TS in TS_list:
+            for fsm, sort_ts in TS.items():
+                # for each O ∈ O_u (not including the zero-object)
+                for obj, seq in sort_ts.items():
+                    if obj == zero_obj:
+                        continue
+                    # for each pair of transitions Ap.m and Aq.n consecutive for O
                     for Ap, Aq in zip(seq, seq[1:]):
                         m = Ap.pos
                         n = Aq.pos
@@ -414,14 +422,14 @@ class LOCM2(OCM):
                             # check each matching hypothesis
                             for H in HS[BkCl].copy():
                                 # if Op,k' = Oq,l' then mark the hypothesis as supported
-                                if (
-                                    Ap.action.obj_params[H.k_ - 1]
-                                    == Aq.action.obj_params[H.l_ - 1]
-                                ):
+                                Ap_params = [ Ap.action.obj_params[k_-1] for k_ in H.k_]
+                                Aq_params = [ Aq.action.obj_params[l_-1] for l_ in H.l_]
+
+                                if ( Ap_params == Aq_params):
                                     H.supported = True
                                 else:  # otherwise remove the hypothesis
                                     HS[BkCl].remove(H)
-        
+        print({"4.1.2"})
         # Remove any unsupported hypotheses (but yet undisputed)
         for hind, hs in HS.copy().items():
             for h in hs.copy():
@@ -429,7 +437,7 @@ class LOCM2(OCM):
                     HS[hind].remove(h)
             if len(hs) == 0:
                 del HS[hind]
-        
+        print({"4.1.3"})
         # Converts HS {HSIndex: HSItem} to a mapping of hypothesis for states of a sort {sort: {state: Hypothesis}}
         return Hypothesis.from_dict_fsm(HS)
     
@@ -571,7 +579,7 @@ class LOCM2(OCM):
 
 
         # all_aps = {action_name: [AP]}
-        all_aps: Dict[str, Set[SingletonEvent]] = defaultdict(set)
+        all_aps: Dict[str, Set[Event]] = defaultdict(set)
         for aps in ap_state_pointers.values():
             for ap in aps:
                 all_aps[ap.action.name].add(ap)
@@ -610,12 +618,15 @@ class LOCM2(OCM):
             type_str = get_type(sort)
             for ap in ap_state_pointers[fsm]:
                 if ap.action.name not in actions:
+                    # if with zero-object, length + 1， else same length
                     actions[ap.action.name] = LearnedAction(
                         ap.action.name,
-                        [None for _ in range(len(all_aps[ap.action.name]))],  # type: ignore
+                        [None for _ in range(len(ap.action.obj_params) + (1-shift) )],  # type: ignore
                     )
                 a = actions[ap.action.name]
-                a.param_types[ap.pos-shift] = type_str
+                for pos in ap.pos:
+                    a.param_types[pos-shift] = type_str
+                
 
                 start_pointer, end_pointer = ap_state_pointers[fsm][ap]
                 start_state, end_state = LOCM2._pointer_to_set(
@@ -627,8 +638,8 @@ class LOCM2(OCM):
                 if start_fluent_name not in fluents[ap]:
                     start_fluent = LearnedLiftedFluent(
                         start_fluent_name,
-                        param_types=[type_str],
-                        param_act_idx=[ap.pos-shift],
+                        param_types=[type_str for _ in ap.pos],
+                        param_act_idx=[(pos-shift) for pos in ap.pos ],
                     )
                     fluents[ap][start_fluent_name] = start_fluent
 
@@ -657,8 +668,9 @@ class LOCM2(OCM):
                                 psort = hyp.G_
                                 pind = hyp.l_
                         if psort is not None:
-                            start_fluent.param_types.append(get_type(psort))
-                            start_fluent.param_act_idx.append(pind - shift)
+                            for p in pind:
+                                start_fluent.param_types.append(get_type(psort))
+                                start_fluent.param_act_idx.append(p - shift)
 
                 a.update_precond(start_fluent)
 
@@ -667,8 +679,8 @@ class LOCM2(OCM):
                     if end_fluent_name not in fluents[ap]:
                         end_fluent = LearnedLiftedFluent(
                             end_fluent_name,
-                            param_types=[type_str],
-                            param_act_idx=[ap.pos-shift],
+                             param_types=[type_str for _ in ap.pos],
+                            param_act_idx=[(pos-shift) for pos in ap.pos ],
                         )
                         fluents[ap][end_fluent_name] = end_fluent
 
@@ -698,8 +710,9 @@ class LOCM2(OCM):
                                     psort = hyp.G_
                                     pind = hyp.k_
                             if psort is not None:
-                                end_fluent.param_types.append(get_type(psort))
-                                end_fluent.param_act_idx.append(pind - shift)
+                                for p in pind:
+                                    end_fluent.param_types.append(get_type(psort))
+                                    end_fluent.param_act_idx.append(p - shift)
 
                     a.update_delete(start_fluent)
                     a.update_add(end_fluent)

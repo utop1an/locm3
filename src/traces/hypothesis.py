@@ -1,48 +1,51 @@
 from .event import Event
 from .fsm import FSM
 from dataclasses import asdict, dataclass
-from typing import Dict, Set
+from typing import Dict, Set, List, Union
 from collections import defaultdict
+
+def to_tuple(x):
+    return tuple(x) if isinstance(x, (list, tuple)) else (x,)
 
 @dataclass
 class HIndex:
 
     B: Event
-    k: int
+    k: Union[int, List[int]]
     C: Event
-    l: int
+    l: Union[int, List[int]]
 
     def __hash__(self):
-        return hash((self.B, self.k, self.C, self.l))
+        return hash((self.B, to_tuple(self.k), self.C, to_tuple(self.l)))
 
 @dataclass
 class HItem:
     S: int
-    k_: int
-    l_: int
+    k_: Union[int, List[int]]
+    l_: Union[int, List[int]]
     G: int
     G_: int
     supported: bool
     fsm: FSM = None
 
     def __hash__(self):
-        return hash((self.S, self.k_, self.l_, self.G, self.G_))
+        return hash((self.S, to_tuple(self.k_), to_tuple(self.l_), self.G, self.G_))
     
 @dataclass
 class Hypothesis:
     S: int
     B: Event
-    k: int
-    k_: int
+    k: Union[int, List[int]]
+    k_: Union[int, List[int]]
     C: Event
-    l: int
-    l_: int
+    l: Union[int, List[int]]
+    l_: Union[int, List[int]]
     G: int
     G_: int
     fsm: FSM
 
     def __hash__(self):
-        return hash((self.S, self.B, self.k, self.k_, self.C, self.l, self.l_, self.G_))
+        return hash((self.S, self.B, to_tuple(self.k), to_tuple(self.k_), self.C, to_tuple(self.l), to_tuple(self.l_), self.G_))
 
     def __repr__(self):
         out = "<\n"
