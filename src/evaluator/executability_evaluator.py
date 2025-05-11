@@ -16,6 +16,7 @@ random.seed(42)
 class ExecutabilityEvaluator:
     def __init__(self, learned_domain, executability_type='cross' , gt_domain_filename=None, debug=False) -> None:
         self.learned_domain = learned_domain
+        self.gt_domain_filename = gt_domain_filename
         if (gt_domain_filename):
             try:
                 self.initialize_task()
@@ -58,8 +59,8 @@ class ExecutabilityEvaluator:
         l_res = []
         gt_res = []
         for i in range(len(l_seqs)):
-            exe_on_learned = self.get_overall_executability('l', gt_seqs[i], l_init, l_visited, debug)
-            exe_on_gt = self.get_overall_executability('gt', l_seqs[i], gt_init, gt_visited, debug)
+            exe_on_learned = self.get_overall_executability('l', gt_seqs[i], l_init, l_visited)
+            exe_on_gt = self.get_overall_executability('gt', l_seqs[i], gt_init, gt_visited)
             # exe_on_learned = self.get_overall_executability('l', gt_seqs[i], set(), set(), debug)
             # exe_on_gt = self.get_overall_executability('gt', l_seqs[i], set(), set(), debug)
             l_res.append(exe_on_learned)
@@ -217,8 +218,7 @@ class ExecutabilityEvaluator:
         # we assume unvisited effects are true since all given action seqs are valid
         visited = _visited.copy()
         error_count = 0
-        for i, step in enumerate(action_sequence):
-            a = step.action
+        for i, a in enumerate(action_sequence):
             action = domain.get_action(a.name)
             # if action not found, meaning it has not been learned properly, with no precond or effects
             # we skip it, and add error count by 1
