@@ -13,8 +13,41 @@ The duplicate obj problem is not going to be fixed in LOCM/LOCM2, since they nev
 After fixing the implementation errors in macq, we can get 100% executability when testing on the trainning traces (except Rovers domain which have duplicate objs in the plan)
 
 
-
 ## LOCM2 revision?
 
-- split transitions error?
+- errors when checking the validity of the splitted transitions
+    - the iLOCM version checks pair of transitions, which is incorrect
+    - we should check with the example event seqs with respect to splitted transition, to avoid dead ends
+
+Problems in handling duplicate objs
+- more FSMs and states derived
+- more state params derived
+- lower exe
+
+## POLOCM2
+
+### experiment design
+
+#### Current
+
+- runtime
+- accuracy/error of Learned Transition Matrix
+- exe: comparing polocm2 to locm2
+
+#### Later
+
+- runtime
+- acc/err
+- cross exe
+
+## POLOCM2-BASELINE
+
+- need a proper way to find example event seqs
+    - in the previous implementation, we only find pairs of events from the PO transition matrix
+    - which is not enough for the fixed LOCM/LOCM2
+    - event seqs with respect to the final transition matrix is required
+
+
+
+
 
