@@ -30,10 +30,6 @@ class ExecutabilityEvaluator:
         self.gt_domain = gt_domain
 
   
-            
-
-       
-
     def check_executability(self,action_sequence, debug=False):
         if (self.executability_type == 'overall'):
             return self.get_overall_executability("l",action_sequence,set(), set(), debug)
@@ -55,7 +51,8 @@ class ExecutabilityEvaluator:
         
         l_seqs, l_init, l_visited, length = self.generate_action_seqs('l', action_sequence)
         gt_seqs, gt_init, gt_visited, _ = self.generate_action_seqs('gt', action_sequence, length)
-
+        print(l_seqs)
+        print(gt_seqs)
         l_res = []
         gt_res = []
         for i in range(len(l_seqs)):
@@ -74,7 +71,6 @@ class ExecutabilityEvaluator:
         elif domain_type == 'gt':
             domain = self.gt_domain
         else:
-            print("get seqs", domain_type)
             raise Exception("Invalid domain")
         
         true_effs = set()
@@ -258,9 +254,6 @@ class ExecutabilityEvaluator:
 
             true_effs = true_effs.union(adds)
             true_effs.difference_update(dels)
-
-            # if self.debug:
-            #     print(f"action {op} executed")
                 
         return 1-error_count/len(action_sequence)
 

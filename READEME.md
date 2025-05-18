@@ -47,6 +47,14 @@ Problems in handling duplicate objs
     - which is not enough for the fixed LOCM/LOCM2
     - event seqs with respect to the final transition matrix is required
 
+- the current way of finding event seqs has problems?
+    - tie-breaking issue
+    - sometimes correct sometimes wrong for the same domain
+
+## Cross Executability 
+
+- implementation error
+
 
 
 

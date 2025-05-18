@@ -66,6 +66,7 @@ class POLOCM2BASELINE(LOCM2):
 
                         iap = IndexedEvent(action, PO_step.index, k + 1, sorts[obj.name])
                         obj_PO_trace[obj].append(iap)
+                        added_objs.append(obj)
                     
                     for successor_ind in PO_step.successors:
                         successor = PO_trace[successor_ind]
