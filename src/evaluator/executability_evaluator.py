@@ -51,8 +51,7 @@ class ExecutabilityEvaluator:
         
         l_seqs, l_init, l_visited, length = self.generate_action_seqs('l', action_sequence)
         gt_seqs, gt_init, gt_visited, _ = self.generate_action_seqs('gt', action_sequence, length)
-        print(l_seqs)
-        print(gt_seqs)
+
         l_res = []
         gt_res = []
         for i in range(len(l_seqs)):
@@ -80,7 +79,8 @@ class ExecutabilityEvaluator:
         # we assume unvisited effects are true since all given action seqs are valid
         visited = set()
         for i, a in enumerate(action_sequence):
-            if limit and i==limit:
+            
+            if limit and i > limit:
                 break
             action = domain.get_action(a.name)
             
@@ -127,6 +127,7 @@ class ExecutabilityEvaluator:
             true_effs = true_effs.union(adds)
             true_effs.difference_update(dels)
 
+
         new_action_sequences = self.generate_action_seq(domain_type, type_objs, true_effs, visited, len(action_sequence))
         
         return new_action_sequences, true_effs, visited, i
@@ -137,15 +138,13 @@ class ExecutabilityEvaluator:
         elif domain_type == 'gt':
             domain = self.gt_domain
         else:
-            print("gen seqs", domain_type)
             raise Exception("Invalid domain")
         
         grounded_actions = domain.get_grounded_actions(type_objs)
         if debug:
             print("number of grounded actions:", len(grounded_actions))
             print("Grounded actions:", grounded_actions)
-        true_effs = init_effs.copy()
-        visited = init_visited.copy()
+        
         def get_applicable_actions(_effs, _visited):
             applicable_actions = []
             for action in grounded_actions:
@@ -160,13 +159,15 @@ class ExecutabilityEvaluator:
         plans = []
         for _ in range(10):
             plan = []
+            true_effs = init_effs.copy()
+            visited = init_visited.copy()
             for i in range(length):
                 candiates = get_applicable_actions(true_effs, visited)
                 if (len(candiates) == 0):
                     break
                 action = random.choice(candiates)
 
-                plan.append(action)
+                
 
                 adds = set(e for _,e in action.add_effects)
                 dels = set(e for _,e in action.del_effects)
@@ -176,24 +177,21 @@ class ExecutabilityEvaluator:
 
                 true_effs = true_effs.union(adds)
                 true_effs.difference_update(dels)
-            plans.append(plan)
-        action_seqs = []
-        if debug:
-            print("New action sequence:", plan)
-        for plan in plans:
-            action_seq = []
-            for op in plan:
-                a = op.name.strip().strip("()").split(" ")
+
+                a = action.name.strip().strip("()").split(" ")
                 action_name = a[0]
                 args = a[1:]
 
-                params = [TypedObject(obj, "na") for obj in args if obj != 'zero']
-                action = ActionSignature(action_name, params)
-                action_seq.append(action)
-            action_seqs.append(action_seq)
+                params = [TypedObject(obj, "na") for obj in args if obj != 'zero'] 
+                plan.append(ActionSignature(action_name, params))
+
+            plans.append(plan)
         if debug:
-            print(action_seq)
-        return action_seqs
+            print("New action sequence:", plan)
+    
+        if debug:
+            print(plans)
+        return plans
 
     
     def get_overall_executability(self,domain_type, action_sequence,_true_effs, _visited):

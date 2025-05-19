@@ -112,6 +112,7 @@ class LOCM2(OCM):
     def find_holes(self, TM_list, debug=False)-> List[pd.DataFrame]:
         TM_list_with_holes = []
         for sort, TM in enumerate(TM_list):
+            
             df = TM.copy()
             if sort == 0:
                 TM_list_with_holes.append(df)
@@ -288,7 +289,7 @@ class LOCM2(OCM):
                 prev_states: StatePointers = None  # type: ignore
                 # iterate over each transition A.P in the sequence
                 for ap in transitions:
-                    # if the transition has not been seen before for the current sort
+                    # if the transition has not been seen copy TMfor the current sort
                     if ap not in event_state_pointers[fsm]:
                         event_state_pointers[fsm][ap] = StatePointers(state_n, state_n + 1)
 

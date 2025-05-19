@@ -53,7 +53,17 @@ Problems in handling duplicate objs
 
 ## Cross Executability 
 
-- implementation error
+- issues:
+    - because we ignore the unseen effs (if a precond is not satisfied in the true_effs, but it has never been seen, we assume it's true)
+        - many mistakes in the plans generated from the gt_domain as wel
+    - when generating a plan, we break when there is no applicable action
+        - shorter/0-len plans
+
+- from the result of locm2
+    - exe_on_l <<< exe_on_gt
+        - is it a good metric?
+    
+
 
 
 

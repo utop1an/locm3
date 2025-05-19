@@ -22,14 +22,14 @@ class POLOCM2(LOCM2):
 
         sorts, sort_to_type_dict = self._get_sorts(PO_trace_list, type_dict)
         obj_traces_list, TM_list = self.solve_po(PO_trace_list, sorts)
-        print("solve po done")
-        transition_sets_per_sort_list = super.split_transitions(TM_list, obj_traces_list, sorts)
-        TS, OS, ap_state_pointers = super.get_TS_OS(obj_traces_list, transition_sets_per_sort_list, TM_list, sorts)
+   
+        transition_sets_per_sort_list = self.split_transitions(TM_list, obj_traces_list, sorts)
+        TS, OS, ap_state_pointers = self.get_TS_OS(obj_traces_list, transition_sets_per_sort_list, TM_list, sorts)
         if self.state_param:
-            bindings = super.get_state_bindings(TS, ap_state_pointers, OS, sorts, TM_list, debug=self.debug)
+            bindings = self.get_state_bindings(TS, ap_state_pointers, OS, sorts, TM_list, debug=self.debug)
         else:
             bindings = None
-        model = super.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False)
+        model = self.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False)
         return model
         
 
@@ -44,7 +44,6 @@ class POLOCM2(LOCM2):
         obj_trace_PO_matrix_overall, \
         obj_trace_FO_matrix_overall, \
         sort_aps = self.get_matrices(PO_trace_list, sorts)
-        print(type(sort_aps))
         prob, PO_vars_overall = self.build_PO_constraints(
             trace_PO_matrix_overall, 
             obj_trace_PO_matrix_overall
@@ -62,13 +61,11 @@ class POLOCM2(LOCM2):
             sorts,
             FO_vars_overall,
             obj_trace_FO_matrix_overall)
-        print("TM constraints done")
         solution = self.bip_solve_PO(
             prob,
             solver,
             sort_AP_vars
             )
-        print("bip solve done")
         obj_traces_list, TM_list = self.get_obj_traces(
             obj_trace_PO_matrix_overall,
             PO_vars_overall,
@@ -127,7 +124,7 @@ class POLOCM2(LOCM2):
             complete_PO(traces_PO_matrix)
             trace_PO_matrix_overall.append(traces_PO_matrix) 
             obj_PO_trace_overall.append(obj_PO_traces)
-                            
+        
     
         # Constructing PO matrix of actions for each object in each trace
         obj_trace_PO_matrix_overall = []
@@ -363,16 +360,12 @@ class POLOCM2(LOCM2):
         ):
         _sort_transition_matrix: Dict[int, pd.DataFrame] = defaultdict()
         sort_transition_matrix: Dict[int, pd.DataFrame] = defaultdict()
-        print("sort_aps", sort_aps)
         for sort, aps in sort_aps.items():
-            print(f"sort {sort}")
-            print(f"aps {aps}")
             cols = list(aps)
             transition_matrix = pd.DataFrame(columns=cols, index=cols)
             _sort_transition_matrix[sort] = transition_matrix.copy()
             sort_transition_matrix[sort] = transition_matrix.copy()
-        
-        print("1")
+    
         for trace_no, matrices in enumerate(obj_trace_FO_matrix_overall):
             for obj, matrix in matrices.items():
                  cols = matrix.columns.tolist()
@@ -390,10 +383,9 @@ class POLOCM2(LOCM2):
                             _sort_transition_matrix[sorts[obj.name]].at[from_ap, to_ap].add(FO_vars_overall[trace_no][obj].get(matrix.iloc[i,j],matrix.iloc[i,j]))
                         elif(matrix.iloc[i,j] == 1):
                             _sort_transition_matrix[sorts[obj.name]].at[from_ap, to_ap] = 1
-        print("2")
+ 
         sort_AP_vars: Dict[int, Dict[Tuple[SingletonEvent,SingletonEvent], pl.LpVariable]] = defaultdict(dict)
-        print("sort_transition_matrix", sort_transition_matrix)
-        print("done")
+     
         for sort, matrix in sort_transition_matrix.items():
             
             for row_header, rows in matrix.iterrows():
@@ -413,7 +405,7 @@ class POLOCM2(LOCM2):
                             matrix.at[row_header, col_header] = np.nan
                     else:
                         matrix.at[row_header, col_header] = _sort_transition_matrix[sort].at[row_header, col_header]
-        print("3")
+      
         if self.debug['build_TM_constraints']:
             print("# Step 4")
             print("## AP vars")
@@ -514,7 +506,14 @@ class POLOCM2(LOCM2):
             for obj, seq in obj_traces.items():
                 grouped_obj_traces[obj].append(seq)
 
-        return grouped_obj_traces, sol_AP_matrix
+        TM_list = []
+        for sort, matrix in sorted(sol_AP_matrix.items()):
+            TM = matrix.infer_objects(copy=False).fillna(0).astype(int)
+            TM_list.append(TM)
+
+
+
+        return grouped_obj_traces, TM_list
 
 
 

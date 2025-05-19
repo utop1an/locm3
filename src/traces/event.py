@@ -67,6 +67,6 @@ class IndexedEvent(Event):
         return IndexedEvent(self.action, self.index, None, None)
     
     def to_event(self):
-        return Event(self.action, self.pos, self.sort)
+        return SingletonEvent(self.action, self.pos, self.sort)
     
     
