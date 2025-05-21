@@ -62,6 +62,20 @@ Problems in handling duplicate objs
 - from the result of locm2
     - exe_on_l <<< exe_on_gt
         - is it a good metric?
+
+
+- ignore prefix?
+    - using existing valid plans to test on the learned domain
+    - generating seqs from l domain to test on the gt domain
+
+- adding constraints when generating plans
+    - type/equality/inequality
+
+- adding invariants constraints when generating plans
+    - domain specific?
+
+- use both valid and invalid plans from the gt domain to test on the l domain
+
     
 
 
