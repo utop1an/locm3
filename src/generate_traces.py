@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import argparse
 import logging
 import multiprocessing
@@ -8,66 +8,42 @@ from planner import RandomPlanner
 
 
 
+def process_domain(domain, task_dir, num_traces, rdPlannerTimeout, max_objects):
 
-def generate_trace(solution_dir, task_dir, planner):
-    try:
-        plan = parse_plan_file(solution_dir, planner)
-        random_traces = planner.generate_traces()
-    except Exception as e:
-        logging.error(e)
-        return None, None
-    return plan, random_traces
-
-def parse_plan_file(file, planner):
-    with open(file, 'r') as f:
-        lines = f.readlines()
-    plan = []
-    for line in lines:
-        if line.startswith(";"):
-            break
-        action = line.strip().strip("()").split(" ")
-        action_name = action[0]
-        op = planner.task.get_action(action_name)
-        assert op is not None, f"Action {action_name} not found in domain"
-
-        args = action[1:]
-        arg_types = [p.type_name for p in op.parameters]
-        arg_with_types = [arg + "?"+ t for arg, t in zip(args, arg_types)]
-        new_action = f"({action_name} {' '.join(arg_with_types)})"
-        plan.append(new_action)
-    return plan
-
-
-def process_domain(domain, solution_dir, task_dir, trace_length, num_traces, rdPlannerTimeout, max_objects):
+    logging.basicConfig(level=logging.INFO, format='[%(processName)s] %(message)s')
     logging.info(f"Generating traces for domain: {domain}")
     domain_filepath = os.path.join(task_dir, domain, "domain.pddl")
 
-    traning_dir = os.path.join(solution_dir, domain, "training/easy")
+    training_dir = os.path.join(task_dir, domain, "training/easy")
     output_data = []
 
-    for plan_file in os.listdir(traning_dir):
-        if not plan_file.endswith(".plan"):
-            continue
-        task_file = plan_file.replace(".plan", ".pddl")
-        plan_filepath = os.path.join(traning_dir, plan_file)
-        task_filepath = os.path.join(task_dir, domain, "training/easy", task_file)
 
+    for task_file in os.listdir(training_dir):
+        if not task_file.endswith(".pddl"):
+            continue
+        task_filepath = os.path.join(task_dir, domain, "training/easy", task_file)
         if not os.path.exists(task_filepath):
             continue
+        plan_filepath = os.path.join(training_dir.replace("tasks", "solutions"), task_file.replace(".pddl", ".plan"))
 
-        planner = RandomPlanner(domain_filepath, task_filepath, plan_len=trace_length, num_traces=num_traces, max_time=rdPlannerTimeout)
+        with open(plan_filepath, 'r') as f:
+            plan_length = sum(1 for line in f if not line.startswith(";"))
+
+        planner = RandomPlanner(domain_filepath, task_filepath, trace_len=plan_length, num_traces=num_traces, max_time=rdPlannerTimeout)
         number_of_objects = len(planner.task.objects)
         if max_objects is not None and number_of_objects > max_objects:
             continue
 
-        plan, random_walk = generate_trace(plan_filepath, task_filepath, planner)
-        if plan is None or random_walk is None:
-            continue
-        plan_data = f"{domain}&&{'plan'}&&{task_file}&&{'easy'}&&{number_of_objects}&&{len(plan)}&&{','.join(plan)}\n"
-        output_data.append(plan_data)
-        for trace in random_walk:
+        random_walks = planner.generate_traces()
+
+        for trace in random_walks:
             trace_data = f"{domain}&&{'rand'}&&{task_file}&&{'easy'}&&{number_of_objects}&&{len(trace)}&&{','.join(trace)}\n"
             output_data.append(trace_data)
+
+        invalid_random_walks = planner.generate_traces(is_valid_trace=False)
+        for invalid_trace in invalid_random_walks:
+            invalid_trace_data = f"{domain}&&{'invalid'}&&{task_file}&&{'easy'}&&{number_of_objects}&&{len(invalid_trace)}&&{','.join(invalid_trace)}\n"
+            output_data.append(invalid_trace_data)
 
     logging.info(f"{domain} done...")
     return output_data
@@ -87,27 +63,26 @@ def main(args):
         logging.error(f"Input path {input_path} does not exist")
         return
 
-    solution_dir = os.path.join(input_path, "solutions")
     task_dir = os.path.join(input_path, "tasks")
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    output_file = os.path.join(output_path, "plain_traces.txt")
+    output_file = os.path.join(output_path, "random_walks.txt")
 
     # Use multiprocessing Pool to parallelize domain processing
-    with multiprocessing.Pool(processes=8) as pool:
+    with multiprocessing.Pool(processes=4) as pool:
         # Collect all domains first
-        domains = [domain for domain in os.listdir(solution_dir) if os.path.isdir(os.path.join(solution_dir, domain))]
+        domains = [domain for domain in os.listdir(task_dir) if os.path.isdir(os.path.join(task_dir, domain))]
         
         # Map each domain to the process_domain function
         results = pool.starmap(
             process_domain,
-            [(domain, solution_dir, task_dir, trace_length, num_traces, rdPlannerTimeout, max_objects) for domain in domains],
+            [(domain, task_dir, num_traces, rdPlannerTimeout, max_objects) for domain in domains],
             chunksize=1
         )
 
-    logging.info(f"Writting traces to {output_file}")
+
     # Write the results to the output file
     with open(output_file, 'w', buffering=1) as file:  # Line buffered
         for result in results:
@@ -123,11 +98,13 @@ if __name__ == "__main__":
     parser.add_argument("--o", type=str, default="./data/plain_traces", help="Output file path")
     parser.add_argument("--l", type=int, default=50, help="Length of the random traces")
     parser.add_argument("--t", type=int, default=30, help="Timeout for random planner generating traces per task in seconds")
-    parser.add_argument("--n", type=int, default=0, help="Number of random traces per task")
+    parser.add_argument("--n", type=int, default=10, help="Number of random traces per task")
     parser.add_argument("--m", type=int, default=None, help="Maximum number of objects in the tasks")
     args = parser.parse_args()
     main(args)
 
 """
 Directly run to get traces from goose-benchmark plans.
+
+
 """

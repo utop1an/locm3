@@ -2,8 +2,8 @@
 from collections import defaultdict
 from math import e
 import random
+from typing import Literal
 
-from matplotlib.pylab import rand
 from requests import get
 from traitlets import default
 from pddl import ActionSignature, TypedObject
@@ -14,7 +14,12 @@ from pddl_parser import open
 random.seed(42)
 
 class ExecutabilityEvaluator:
-    def __init__(self, learned_domain, executability_type='cross' , gt_domain_filename=None, debug=False) -> None:
+    def __init__(
+            self,
+            learned_domain, 
+            gt_domain_filename=None, 
+            debug=False
+        ) -> None:
         self.learned_domain = learned_domain
         self.gt_domain_filename = gt_domain_filename
         if (gt_domain_filename):
@@ -22,47 +27,91 @@ class ExecutabilityEvaluator:
                 self.initialize_task()
             except Exception as e:
                 raise Exception(f"Error initializing task: {e}")
-        self.executability_type = executability_type
         self.debug = debug
 
     def initialize_task(self):
         gt_domain = open(self.gt_domain_filename)
         self.gt_domain = gt_domain
 
-  
-    def check_executability(self,action_sequence, debug=False):
-        if (self.executability_type == 'overall'):
-            return self.get_overall_executability("l",action_sequence,set(), set(), debug)
-        elif (self.executability_type == 'first_fail'):
-            return self.get_first_fail_executability(action_sequence, debug)
-        elif (self.executability_type == 'cross'):
-            return self.get_cross_executabilities(action_sequence, debug)
-        else:
-            raise Exception("Invalid executability type")
+    def get_balanced_executability(self, valid_seqs, invalid_seqs, debug=False):
+        if not self.learned_domain:
+            raise Exception("Domain not initialized")
         
-    def get_cross_executabilities(self,action_sequence, debug=False):
+        assert len(valid_seqs) > 0, f"Valid seqs should not be empty"
+        assert len(invalid_seqs) > 0, f"Invalid seqs should not be empty"
+        
+        valid_res = []
+        invalid_res = []
+
+        for i in range(len(valid_seqs)):
+            exe = self.get_overall_executability(valid_seqs[i], debug)
+            valid_res.append(exe)
+        for j in range(len(invalid_seqs)):
+            exe = self.get_overall_executability(invalid_seqs[j], debug)
+            
+            invalid_gt_res = (1-1/len(invalid_seqs[j]))
+            assert invalid_gt_res != 0, f"Invalid gt seqs should not be empty"
+            invalid_res.append(exe/invalid_gt_res)
+
+        valid_exe = sum(valid_res)/len(valid_res)
+        invalid_exe = sum(invalid_res)/len(invalid_res)
+        return valid_exe, invalid_exe
+        
+
+    
+        
+    def get_cross_executabilities(self,prefix_action_sequence, gt_seqs=[], debug=False):
+        """
+        Check the cross executability of the gt seqs on learned domain and learned seqs on gt domain
+
+        Args:
+            prefix_action_sequence (list): list of initial action seq, if given, it will be used to generate the action seqs
+            gt_seqs (list): list of gt action sequences
+            invalid_gt_seqs (list): list of invalid gt action sequences
+            debug (bool, optional): whether to print debug information. Defaults to False.
+        """
         if not self.learned_domain:
             raise Exception("Domain not initialized")
         if not self.gt_domain_filename:
             raise Exception("GT Domain not given")
         
-        if (len(action_sequence)==0):
+        if (len(prefix_action_sequence)==0):
             raise Exception("Error checking executability: Length 0")
         
-        l_seqs, l_init, l_visited, length = self.generate_action_seqs('l', action_sequence)
-        gt_seqs, gt_init, gt_visited, _ = self.generate_action_seqs('gt', action_sequence, length)
+        if prefix_action_sequence and not gt_seqs:
 
-        l_res = []
-        gt_res = []
-        for i in range(len(l_seqs)):
-            exe_on_learned = self.get_overall_executability('l', gt_seqs[i], l_init, l_visited)
-            exe_on_gt = self.get_overall_executability('gt', l_seqs[i], gt_init, gt_visited)
-            # exe_on_learned = self.get_overall_executability('l', gt_seqs[i], set(), set(), debug)
-            # exe_on_gt = self.get_overall_executability('gt', l_seqs[i], set(), set(), debug)
-            l_res.append(exe_on_learned)
-            gt_res.append(exe_on_gt)
-        
-        return sum(l_res)/len(l_res), sum(gt_res)/len(gt_res)
+            l_seqs, l_init, l_visited, length = self.generate_action_seqs('l', prefix_action_sequence)
+            gt_seqs, gt_init, gt_visited, _ = self.generate_action_seqs('gt', prefix_action_sequence, length)
+
+            l_res = []
+            gt_res = []
+            for i in range(len(l_seqs)):
+                exe_on_learned = self.get_overall_executability('l', gt_seqs[i], l_init, l_visited)
+                exe_on_gt = self.get_overall_executability('gt', l_seqs[i], gt_init, gt_visited)
+                # exe_on_learned = self.get_overall_executability('l', gt_seqs[i], set(), set(), debug)
+                # exe_on_gt = self.get_overall_executability('gt', l_seqs[i], set(), set(), debug)
+                l_res.append(exe_on_learned)
+                gt_res.append(exe_on_gt)
+            
+            return sum(l_res)/len(l_res), sum(gt_res)/len(gt_res)
+
+        if prefix_action_sequence and gt_seqs:
+            l_seqs, l_init, l_visited, length = self.generate_action_seqs('l', prefix_action_sequence)
+
+            l_res = []
+            gt_res = []
+            for i in range(len(l_seqs)):
+                exe_on_gt = self.get_overall_executability('gt', l_seqs[i], set(), set())
+                gt_res.append(exe_on_gt)
+
+            for j in range(len(gt_seqs)):
+                exe_on_learned = self.get_overall_executability('l', gt_seqs[i], set(), set())
+                l_res.append(exe_on_learned)
+            
+            
+            return sum(l_res)/len(l_res), sum(gt_res)/len(gt_res)
+
+
     
     def generate_action_seqs(self, domain_type, action_sequence, limit=None):
         if domain_type == 'l':

@@ -49,7 +49,7 @@ Problems in handling duplicate objs
 
 - the current way of finding event seqs has problems?
     - tie-breaking issue
-    - sometimes correct sometimes wrong for the same domain
+    - sometimes correct sometimes wrong for the same domain, rand issue
 
 ## Cross Executability 
 
@@ -63,18 +63,18 @@ Problems in handling duplicate objs
     - exe_on_l <<< exe_on_gt
         - is it a good metric?
 
+fix:
+    - ignore prefix?
+        - using existing valid plans to test on the learned domain
+        - generating seqs from l domain to test on the gt domain
 
-- ignore prefix?
-    - using existing valid plans to test on the learned domain
-    - generating seqs from l domain to test on the gt domain
+    - adding constraints when generating plans
+        - type/equality/inequality
 
-- adding constraints when generating plans
-    - type/equality/inequality
+    - adding invariants constraints when generating plans
+        - domain specific?
 
-- adding invariants constraints when generating plans
-    - domain specific?
-
-- use both valid and invalid plans from the gt domain to test on the l domain
+    - use both valid and invalid plans from the gt domain to test on the l domain
 
     
 
