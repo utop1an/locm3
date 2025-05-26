@@ -158,7 +158,7 @@ def get_to_comparable_matrix(trace):
                 cm[i, j] = 1
         return cm
 
-def get_po_comparable_matrix(input_dod, input_cm, strict):
+def get_po_comparable_matrix(input_flex, input_cm, strict):
     def destroy(gap, repeats):
         min_step = math.ceil(repeats/10)
         candidates = np.argwhere(output_cm == 1)
@@ -171,9 +171,9 @@ def get_po_comparable_matrix(input_dod, input_cm, strict):
         for idx in idx_to_remove:
             x,y = candidates[idx]  
             output_cm[x,y] = np.nan
-    if (input_dod ==0):
+    if (input_flex ==0):
         return input_cm, 0
-    if(input_dod == 1):
+    if(input_flex == 1):
         output_cm = np.full_like(input_cm, np.nan)
         return output_cm, 1
     
@@ -183,24 +183,24 @@ def get_po_comparable_matrix(input_dod, input_cm, strict):
     if strict:
         repeats=0
         flag = True
-        gap = input_dod
+        gap = input_flex
         while flag:
-            dod = destroy(gap, repeats)
+            flex = destroy(gap, repeats)
             output_cm = complete_by_transitivity(output_cm)
-            dod = compute_flex(output_cm)
+            flex = compute_flex(output_cm)
             repeats+=1
-            if (dod >= input_dod):
+            if (flex >= input_flex):
                 flag = False
             else:
-                gap = input_dod - dod
+                gap = input_flex - flex
                 flag = True
 
     else:
-        dod = destroy(input_dod, 1)
+        flex = destroy(input_flex, 1)
 
-    return output_cm, dod
+    return output_cm, flex
 
-def get_potrace(cm, dod, to_trace, reorder):
+def get_potrace(cm, flex, to_trace, reorder):
     from traces import PartialOrderedTrace, PartialOrderedStep
 
     po_steps: List[PartialOrderedStep] = [
@@ -213,9 +213,9 @@ def get_potrace(cm, dod, to_trace, reorder):
     if reorder:
         random.shuffle(po_steps)
     
-    return PartialOrderedTrace(po_steps, dod)
+    return PartialOrderedTrace(po_steps, flex)
 
-def convert_trace_to_potrace(to_trace, input_dod, strict=True, reorder=True):
+def convert_trace_to_potrace(to_trace, input_flex, strict=True, reorder=True):
     to_cm = get_to_comparable_matrix(to_trace)
-    po_cm, output_dod = get_po_comparable_matrix(input_dod, to_cm, strict)
-    return get_potrace(po_cm, output_dod, to_trace, reorder)
+    po_cm, output_flex = get_po_comparable_matrix(input_flex, to_cm, strict)
+    return get_potrace(po_cm, output_flex, to_trace, reorder)

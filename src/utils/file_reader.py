@@ -82,4 +82,54 @@ def read_csv_file(file_path):
     raise NotImplementedError
 
 def read_json_file(file_path):
-    raise NotImplementedError
+    import json
+    from traces import Trace, Step, State, PartialOrderedStep, PartialOrderedTrace
+    from pddl import ActionSignature, TypedObject
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+        for learning_obj in data:
+            raw_traces = learning_obj['traces']
+            traces = []
+            for raw_trace in raw_traces:
+                steps = []
+                for i, raw_step in enumerate(raw_trace):
+                    action_name = raw_step['action']
+                    obj_names = raw_step['objs']
+                    objs = []
+                    for obj in obj_names:
+                        obj_name, obj_type = obj.split("?")
+                        objs.append(TypedObject(obj_type, obj_name))
+                    action = ActionSignature(action_name, objs)
+                    step = Step(action, State(), i)
+                    steps.append(step)
+                trace = Trace(steps)
+                traces.append(trace)
+
+                
+            learning_obj['traces'] = traces
+
+            if 'poats' in learning_obj:
+                poats = learning_obj['poats']
+                po_traces_by_flex = []
+                for k, poat in enumerate(poats):
+                    
+                    actual_flex = poat['actual_flex']
+                    po = poat['pos']
+                    inds = poat['inds']
+
+                    po_traces = []
+
+                    for l, trace in traces:
+                        po = po[l]
+                        ind = inds[l]
+                        po_steps = []
+
+                        for j, po_step_ind in enumerate(ind):
+                            ori_step = trace[po_step_ind]
+                            po_step = PartialOrderedStep(ori_step.state, ori_step.action, ori_step.index, po[j])
+                            po_steps.append(po_step)
+                        po_traces.append(PartialOrderedTrace(po_steps, actual_flex))
+                    po_traces_by_flex.append(po_traces)
+                learning_obj['po_traces'] = po_traces_by_flex
+
+    return data

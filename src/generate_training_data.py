@@ -83,7 +83,7 @@ def generate_trace(domain, df, number_of_traces,combined, trace_length=None):
             'index': i,
             'total_length': total_length,
             'traces': traces,
-            'pos': poats,
+            'poats': poats,
             'number_of_objects': int(number_of_objects/len(traces))
         }
         output.append(output_obj)
@@ -123,9 +123,9 @@ def get_PO_data(raw_traces):
             pos.append(po)
             inds.append(ind)
         poat = {
-            'actual_dod': po_trace.flex,
-            'traces_inx': inds,
-            'po': pos
+            'actual_flex': po_trace.flex,
+            'inds': inds,
+            'pos': pos
         }
         poats.append(poat)
         
@@ -196,5 +196,8 @@ if __name__ == '__main__':
     main(args)
 
 """
-Directly run to generate training data
+Directly run to generate training data with no PO data.
+
+run with:
+    --po to generate PO data
 """
