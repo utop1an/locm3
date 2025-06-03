@@ -23,6 +23,7 @@ class ExecutabilityEvaluator:
         ) -> None:
         self.learned_domain = learned_domain
         self.gt_domain_filename = gt_domain_filename
+        self.invariant_check = invariant_check
         try:
             if (gt_domain_filename):
                 self.gt_domain =  open(self.gt_domain_filename)
@@ -34,19 +35,17 @@ class ExecutabilityEvaluator:
         self.debug = debug
 
     def parse_invariants(self):
-        l_raw_invariants = find_invariants(self.learned_domain)
+        self.l_invariants = find_invariants(self.learned_domain, None)
         if self.gt_domain:
-            gt_raw_invariants = find_invariants(self.gt_domain)
+            self.gt_invariants = find_invariants(self.gt_domain, None)
 
     def check_invariants(self,domain_type, true_effs, adds, dels):
         """
         Check if the true effects satisfy the invariants
         """
         if domain_type == 'l':
-            domain = self.learned_domain
-            invariants = self.learned_invariants
+            invariants = self.l_invariants
         elif domain_type == 'gt':
-            domain = self.gt_domain
             invariants = self.gt_invariants
         else:
             raise Exception("Invalid domain")
@@ -56,7 +55,7 @@ class ExecutabilityEvaluator:
             for invariant in invariants:
                 for part in invariant.parts:
                     if part.predicate == atom.predicate:
-                        res += set(x for x in invariant.parts if x!=part)
+                        res = res.union(set(x for x in invariant.parts if x!=part))
                     break
             return res
         
@@ -277,12 +276,19 @@ class ExecutabilityEvaluator:
                 invalid = preconditions.difference(_effs)
                 invalid = invalid.intersection(_visited)
                 if (len(invalid)==0):
+                    if self.invariant_check:
+                        self.check_invariants(
+                            domain_type, 
+                            _effs,
+                            set(e for _,e in action.add_effects),
+                            set(e for _,e in action.del_effects)
+                            )
                     applicable_actions.append(action)
             return applicable_actions
         
         
         plans = []
-        for _ in range(10):
+        for _ in range(3):
             plan = []
             true_effs = init_effs.copy()
             visited = init_visited.copy()
@@ -435,7 +441,7 @@ class ExecutabilityEvaluator:
             adds = set(e for _,e in op.add_effects)
             dels = set(e for _,e in op.del_effects)
             # mark visited effects
-            visited = visited.union(adds).union(dels);
+            visited = visited.union(adds).union(dels)
 
             true_effs = true_effs.union(adds)
             true_effs.difference_update(dels)

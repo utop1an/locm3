@@ -73,6 +73,7 @@ fix:
             
         - still have the risks of generating new invalid seqs (we don't have a problem instance which defines init, goal, objs, no invariants can be generated? but still can use inequalities to constrain it?)
         - but result looks good
+        - todo: test the gen seq with different params, make it consistent with the plan len, using different percentage cut strategy (30% as prefix, gen 70%)
 
     - option2:
         - use both valid and invalid plans from the gt_domain to test on the l_domain
@@ -80,17 +81,19 @@ fix:
             for each domain and instance -> generate several valid seqs -> test on l_domain
             for each domain and instance -> generate several invalid seqs (the last action is invalid) -> test on l_domain final_exe = [ exe / (1-(1/len))]
             (random walks, avoid similar nodes to be explored)
+     
         
         - random walk may gen seqs with transitions that never appeared in the training data, but still valid -> exe_valid < exe_l
             (adding invariants? currently sas+ is used to generate seqs, which already included some mutex info?)
         - maybe not generate another random walk for invalid, just replace the last action with an invalid one?
         - increase the number of invalid actions? but how to define invalid actions after invalid actions? [pickA stackBC (pickB?putA?pickD?)]
-        - use first fail exe? no...
+        - todo: use first fail exe on invalid ones
 
     
     - option3:
         - adding constraints when generating plans
         - type/equality/inequality constraints
+        - for each pair of arg, if they are always not equal? if sometimes we see they are equal?...
         
         - woking...
         - still depends on (transitions/actions in the) evidenced plans
@@ -99,6 +102,8 @@ fix:
         - handcraft? domain specific, time consuming
         - invariants finder from fast_downward? strips based in variants found (is it better than sas+? no mapping from sas+ to strips atoms/predicates... working on using strips+invariants to gen new seqs)
             - before applying an action -> for each atom in the add effs -> check if it violates the true_effs (atoms in the state) against invariants, or the violations are deleted by current action -> reject action if violates
+
+    plot the result！
 
     
 

@@ -1,4 +1,4 @@
-ID, Domain, len, objs, valid_exe, invalid_exe
+ID, Domain, len, objs, l_exe, gt_exe
 0, blocksworld, 10, 19, 0.49481446543722457, 0.030303030303030304
 1, blocksworld, 30, 19, 0.54726748531232, 0.06060606060606061
 2, blocksworld, 50, 18, 0.5893494360618644, 0.9949494949494949
