@@ -96,7 +96,7 @@ class ExecutabilityEvaluator:
         return True
         
 
-    def get_balanced_executability(self, valid_seqs, invalid_seqs, debug=False):
+    def get_balanced_executability(self, valid_seqs, invalid_seqs,binary=False, debug=False):
         if not self.learned_domain:
             raise Exception("Domain not initialized")
         
@@ -110,11 +110,14 @@ class ExecutabilityEvaluator:
             exe = self.get_overall_executability('l',valid_seqs[i],set(),set() )
             valid_res.append(exe)
         for j in range(len(invalid_seqs)):
-            exe = self.get_overall_executability('l',invalid_seqs[j], set(),set())
+            exe = self.get_first_fail_executability('l',invalid_seqs[j], set(),set(),binary)
             
-            invalid_gt_res = (1-1/len(invalid_seqs[j]))
-            assert invalid_gt_res != 0, f"Invalid gt seqs should not be empty"
-            invalid_res.append(exe/invalid_gt_res)
+            if binary:
+                invalid_res.append(1-exe)
+            else:
+                invalid_gt_res = (1-1/len(invalid_seqs[j]))
+                assert invalid_gt_res != 0, f"Invalid gt seqs should not be empty"
+                invalid_res.append(exe/invalid_gt_res)
 
         valid_exe = sum(valid_res)/len(valid_res)
         invalid_exe = sum(invalid_res)/len(invalid_res)
@@ -123,7 +126,7 @@ class ExecutabilityEvaluator:
 
     
         
-    def get_cross_executabilities(self,prefix_seqs, gt_seqs=[], debug=False):
+    def get_cross_executability(self,prefix_seqs, gt_seqs=[], gen_seq_rate=None, debug=False):
         """
         Check the cross executability of the gt seqs on learned domain and learned seqs on gt domain
 
@@ -144,7 +147,7 @@ class ExecutabilityEvaluator:
 
             l_items= self.generate_action_seqs('l', prefix_seqs)
             length_limits = [l for _,_,_,l in l_items]
-            gt_items = self.generate_action_seqs('gt', prefix_seqs, length_limits)
+            gt_items = self.generate_action_seqs('gt', prefix_seqs, limit= length_limits)
 
             l_res = []
             gt_res = []
@@ -162,7 +165,8 @@ class ExecutabilityEvaluator:
             return sum(l_res)/len(l_res), sum(gt_res)/len(gt_res)
 
         if prefix_seqs and gt_seqs:
-            l_items = self.generate_action_seqs('l', prefix_seqs)
+
+            l_items = self.generate_action_seqs('l', prefix_seqs, gen_seq_rate = gen_seq_rate)
 
             l_res = []
             gt_res = []
@@ -181,7 +185,7 @@ class ExecutabilityEvaluator:
 
 
     
-    def generate_action_seqs(self, domain_type, prefix_seqs, limits=None):
+    def generate_action_seqs(self, domain_type, prefix_seqs, limits=None, gen_seq_rate=None):
         if domain_type == 'l':
             domain = self.learned_domain
         elif domain_type == 'gt':
@@ -191,6 +195,10 @@ class ExecutabilityEvaluator:
         
         res = []
         for index, prefix_seq in enumerate(prefix_seqs):
+
+            if gen_seq_rate:
+                if gen_seq_rate * len(prefix_seq) < 1:
+                    continue
             true_effs = set()
             type_objs = defaultdict(set)
 
@@ -200,6 +208,9 @@ class ExecutabilityEvaluator:
             for i, a in enumerate(prefix_seq):
 
                 if limits and i > limits[index]:
+                    break
+
+                if gen_seq_rate and i > gen_seq_rate * len(prefix_seq):
                     break
 
                 if isinstance(a, Step):
@@ -325,7 +336,7 @@ class ExecutabilityEvaluator:
         return plans
 
     
-    def get_overall_executability(self,domain_type, action_sequence,_true_effs, _visited):
+    def get_overall_executability(self,domain_type, action_sequence, _true_effs, _visited):
         if domain_type == 'l':
             domain = self.learned_domain
         elif domain_type == 'gt':
@@ -335,7 +346,7 @@ class ExecutabilityEvaluator:
         if not domain:
             raise Exception("Domain not given")
         
-        if (len(action_sequence)==0):
+        if (not action_sequence):
             return 0
         
         true_effs = _true_effs.copy()
@@ -390,22 +401,30 @@ class ExecutabilityEvaluator:
 
     
         
-    def get_first_fail_executability(self,action_sequence, debug=False):
-        if not self.learned_domain:
-            raise Exception("Domain not initialized")
-        if (len(action_sequence)==0):
-            raise Exception("Error checking executability: Length 0")
-        true_effs = set()
-
-        # as we don't know the init states, we can only record the visited effects
-        # we assume unvisited effects are true since all given action seqs are valid
-        visited = set()
+    def get_first_fail_executability(self,domain_type, action_sequence,  _true_effs, _visited, binary=False):
+        if domain_type == 'l':
+            domain = self.learned_domain
+        elif domain_type == 'gt':
+            domain = self.gt_domain
+        else:
+            raise Exception("Invalid domain")
+        if not domain:
+            raise Exception("Domain not given")
+        
+        if (not action_sequence):
+            return 0
+        
+        true_effs = _true_effs.copy()
+        visited = _visited.copy()
+        
         for i, a in enumerate(action_sequence):
             if isinstance(a, Step):
                 a = a.action
             action = self.learned_domain.get_action(a.name)
             if not action:
-                raise KeyError(self.domain_filename)
+                if binary:
+                    return 0
+                break
 
             param_names = [p.name for p in action.parameters]
             param_types = [p.type_name for p in action.parameters]
@@ -417,44 +436,31 @@ class ExecutabilityEvaluator:
                 index= param_types.index('zero')
                 params.insert(index, 'zero')
             var_mapping = dict(zip(param_names, params))
+            
             objects_by_type = dict(zip(params, param_types))
             op = action.instantiate(var_mapping,None, None,None, objects_by_type,None)
-
             # check applicable
             preconditions = set(op.precondition)
             invalid = preconditions.difference(true_effs)
             invalid = invalid.intersection(visited)
+
             # not applicable
             if(len(invalid)>0):
-                executability = i/len(action_sequence)
-                # for prec in invalid:
-                #     print(prec.predicate, end= "|")
-                # print("", end=",")
-
-                if debug:
-                    print(f"action {op.name} not executable")
-                    print("preconditions not satisfied: ", invalid)
-                    print("ending with executability: ", executability)
-                    
-                return executability
+                if binary:
+                    return 0
+                break
+            
             # apply action
             adds = set(e for _,e in op.add_effects)
             dels = set(e for _,e in op.del_effects)
+            
             # mark visited effects
             visited = visited.union(adds).union(dels)
 
             true_effs = true_effs.union(adds)
             true_effs.difference_update(dels)
 
-          
-            if debug:
-                print(f"{op.name}... executed")
-                print("adding:")
-                print([e for _,e in op.add_effects])
-                print("deleting:")
-                print([e for _,e in op.del_effects])
-                print()
-        return 1
+        return i/len(action_sequence)
             
 
 

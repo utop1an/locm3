@@ -4,3 +4,4 @@ networkx
 tabulate
 pytest
 pydot
+pulp
