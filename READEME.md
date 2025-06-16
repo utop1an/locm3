@@ -105,7 +105,9 @@ fix:
 
 plot the result！
 
-    
+smapling? repeat
+
+plot? distribution
 
     
 
