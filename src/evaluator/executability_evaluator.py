@@ -210,7 +210,7 @@ class ExecutabilityEvaluator:
                 if limits and i > limits[index]:
                     break
 
-                if gen_seq_rate and i > gen_seq_rate * len(prefix_seq):
+                if gen_seq_rate and i == gen_seq_rate * len(prefix_seq):
                     break
 
                 if isinstance(a, Step):
@@ -263,7 +263,7 @@ class ExecutabilityEvaluator:
                 true_effs.difference_update(dels)
 
 
-            new_action_sequences = self.generate_action_seq(domain_type, type_objs, true_effs, visited, len(prefix_seq))
+            new_action_sequences = self.generate_action_seq(domain_type, type_objs, true_effs, visited, len(prefix_seq)-i)
             res.append((new_action_sequences, true_effs, visited, i))
         return res
 
@@ -299,7 +299,7 @@ class ExecutabilityEvaluator:
         
         
         plans = []
-        for _ in range(3):
+        for _ in range(1):
             plan = []
             true_effs = init_effs.copy()
             visited = init_visited.copy()

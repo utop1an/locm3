@@ -8,7 +8,7 @@ from pddl import TypedObject, ActionSignature
 
 SEED=42
 random.seed(SEED)
-REPEAT = 1
+REPEAT = 5
 TRACELENGTH = [10,15,30,50,75,100]
 NUMBEROFTRACES =[1,3,5,10,25,50,100]
 COUNTER = 0
@@ -34,7 +34,8 @@ def sample_combined(df, number_of_traces):
 
     return pd.concat([p1_traces, p2_traces])
 
-def generate_trace(domain, df, number_of_traces,combined, trace_length=None):
+
+def generate_trace(domain, df, number_of_traces,combined, overall_length, trace_length=None):
     global COUNTER
     output = []
     for i in range(REPEAT):
@@ -42,23 +43,25 @@ def generate_trace(domain, df, number_of_traces,combined, trace_length=None):
         if combined == "combined":
             rows = sample_combined(df, number_of_traces)
         elif combined == "plan":
-            rows = df[df['type'] == 'plan'].sample(n=number_of_traces, random_state=SEED)
+            rows = df[df['type'] == 'plan'].sample(n=number_of_traces)
         elif combined == "random":
             rows = df[df['type'] == 'rand'].sample(n=number_of_traces, random_state=SEED)
-
+        
+      
         traces = []
         total_length = 0
         number_of_objects = 0
         for r, row in rows.iterrows():
             plain_trace = row['trace'].split(',')
-            if len(plain_trace)<2:
+            if len(plain_trace)<5:
                 continue
             if trace_length is not None:
                 if (len(plain_trace) <= trace_length):
                     rand_trace = plain_trace
                 else:
-                    rand_start = random.randint(0, len(plain_trace) - trace_length)
-                    rand_trace = plain_trace[rand_start:rand_start + trace_length]
+                    # rand_start = random.randint(0, len(plain_trace) - trace_length)
+                    # rand_trace = plain_trace[rand_start:rand_start + trace_length]
+                    rand_trace = plain_trace[:trace_length]
             else:
                 rand_trace = plain_trace
             trace = []
@@ -71,6 +74,8 @@ def generate_trace(domain, df, number_of_traces,combined, trace_length=None):
             traces.append(trace)
             if total_length + len(rand_trace) >= 1000:
                 break
+        if len(traces) == 0:
+            continue
         
         if PO:
             poats = get_PO_data(traces)
@@ -84,7 +89,8 @@ def generate_trace(domain, df, number_of_traces,combined, trace_length=None):
             'total_length': total_length,
             'traces': traces,
             'poats': poats,
-            'number_of_objects': int(number_of_objects/len(traces))
+            'number_of_objects': int(number_of_objects/len(traces)),
+            'len%': total_length/overall_length
         }
         output.append(output_obj)
         COUNTER += 1
@@ -130,7 +136,13 @@ def get_PO_data(raw_traces):
         poats.append(poat)
         
     return poats
-                
+
+def get_overall_length(df):
+    overall_length = 0
+    for i, row in df.iterrows():
+        plain_trace = row['trace'].split(',')
+        overall_length += len(plain_trace)
+    return overall_length
 
 def main(args):
     global REPEAT, CONVERTOR, PO
@@ -166,13 +178,14 @@ def main(args):
     domains = input_data['domain'].unique() 
     for domain in domains:
         df = input_data[input_data['domain'] == domain]
+        overall_length = get_overall_length(df)
         for length in TRACELENGTH:
             for num in NUMBEROFTRACES:
                 if num > len(df):
                     break
                 if length * num > 1000:
                     break
-                output = generate_trace(domain, df, num, combined,trace_length=length)
+                output = generate_trace(domain, df, num, combined,overall_length, trace_length=length )
                 output_data= output_data + output
     
     output_filename_pre = 'traces'
