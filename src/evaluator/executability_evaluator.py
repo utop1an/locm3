@@ -24,6 +24,7 @@ class ExecutabilityEvaluator:
         self.learned_domain = learned_domain
         self.gt_domain_filename = gt_domain_filename
         self.invariant_check = invariant_check
+        self.debug = debug
         try:
             if (gt_domain_filename):
                 self.gt_domain =  open(self.gt_domain_filename)
@@ -32,7 +33,7 @@ class ExecutabilityEvaluator:
                     
         except Exception as e:
             raise Exception(f"Initialize Evaluator failed: {e}")
-        self.debug = debug
+        
 
     def parse_invariants(self):
         self.l_invariants = find_invariants(self.learned_domain, None)
@@ -95,6 +96,27 @@ class ExecutabilityEvaluator:
                 
         return True
         
+
+    def get_acceptance_rate(self, valid_seqs, invalid_seqs, debug=False):
+        if not self.learned_domain:
+            raise Exception("Domain not initialized")
+        
+        assert len(valid_seqs) > 0, f"Valid seqs should not be empty"
+        assert len(invalid_seqs) > 0, f"Invalid seqs should not be empty"
+        
+        valid_res = []
+        invalid_res = []
+
+        for i in range(len(valid_seqs)):
+            exe = self.get_first_fail_executability('l',valid_seqs[i],set(),set(), True )
+            valid_res.append(exe)
+        for j in range(len(invalid_seqs)):
+            exe = self.get_first_fail_executability('l',invalid_seqs[j], set(),set(),True)
+            invalid_res.append(exe)
+
+        valid_acceptance = sum(valid_res)/len(valid_res)
+        invalid_acceptance = sum(invalid_res)/len(invalid_res)
+        return valid_acceptance, invalid_acceptance
 
     def get_balanced_executability(self, valid_seqs, invalid_seqs,binary=False, debug=False):
         if not self.learned_domain:
@@ -411,9 +433,9 @@ class ExecutabilityEvaluator:
         if not domain:
             raise Exception("Domain not given")
         
-        if (not action_sequence):
-            return 0
         
+        if not action_sequence:
+            return 0
         true_effs = _true_effs.copy()
         visited = _visited.copy()
         
@@ -421,10 +443,12 @@ class ExecutabilityEvaluator:
             if isinstance(a, Step):
                 a = a.action
             action = self.learned_domain.get_action(a.name)
-            if not action:
+            if not action and binary:
                 if binary:
                     return 0
-                break
+                else:
+                    i-=1
+                    break
 
             param_names = [p.name for p in action.parameters]
             param_types = [p.type_name for p in action.parameters]
@@ -446,8 +470,13 @@ class ExecutabilityEvaluator:
 
             # not applicable
             if(len(invalid)>0):
+                if self.debug:
+                    print(f"action {op} not executable")
+                    print("preconditions not satisfied: ", invalid)
                 if binary:
                     return 0
+                else:
+                    i-=1
                 break
             
             # apply action
@@ -460,7 +489,7 @@ class ExecutabilityEvaluator:
             true_effs = true_effs.union(adds)
             true_effs.difference_update(dels)
 
-        return i/len(action_sequence)
+        return (i+1)/len(action_sequence)
             
 
 

@@ -73,7 +73,7 @@ class LOCM2(OCM):
                         obj_traces[obj].append(event)
                         graphs[sorts[obj.name]].add_node(event)
                         added_objs.append(obj)
-        obj_traces_list.append(obj_traces)
+            obj_traces_list.append(obj_traces)
 
         TM_list = []
         for obj_trace in obj_traces_list:
@@ -138,7 +138,7 @@ class LOCM2(OCM):
             # Convert NumPy array back to DataFrame
             df1 = pd.DataFrame(df1, index=df.index, columns=df.columns)
 
-            if self.debug['find_holes']: 
+            if self.debug: 
                 print(f"Sort.{sort} TM with holes:")
                 pprint_table(df1)
 
@@ -158,7 +158,7 @@ class LOCM2(OCM):
                     if TM_with_holes.iloc[i, j] == -1:
                         holes.add(frozenset({TM_with_holes.index[i], TM_with_holes.columns[j]}))
             holes_per_sort_list.append(holes)
-            if self.debug['extract_holes']:
+            if self.debug:
                 print("#holes in Sort.{}: {}".format(sort, len(holes)))
                 if (len(holes) > 0):
                     print(holes)
@@ -512,7 +512,7 @@ class LOCM2(OCM):
 
                 # track all the h.Bs that occur in bindings[G][S]
                 pointers = OS[fsm][state]
-                # TODO: locm only checks for inaps, but outaps?
+                
                 inaps = set(ap for ap, (start, end) in ap_state_pointers[fsm].items() if end in pointers)
                 outaps = set(ap for ap, (start, end) in ap_state_pointers[fsm].items() if start in pointers)        
                 

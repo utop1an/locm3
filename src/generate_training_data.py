@@ -76,7 +76,7 @@ def generate_trace(domain, df, number_of_traces,combined, overall_length, trace_
                 break
         if len(traces) == 0:
             continue
-        
+
         if PO:
             poats = get_PO_data(traces)
         else:
@@ -104,7 +104,7 @@ def get_PO_data(raw_traces):
         for i, raw_step in enumerate(raw_trace):
             action_name = raw_step['action']
             obj_names = raw_step['objs']
-            objs = [TypedObject('na', obj) for obj in obj_names]
+            objs = [TypedObject(obj, 'na') for obj in obj_names]
             action = ActionSignature(action_name, objs)
             step = Step(State(), action, i)
             steps.append(step)

@@ -20,7 +20,7 @@ def parse_action(action):
         p = param.strip().split("?")
         obj_name = p[0]
         if len(p) == 1:
-            objs.append(TypedObject(obj_name, "null"))
+            objs.append(TypedObject(obj_name, "object"))
         elif len(p) == 2:
             objs.append(TypedObject(obj_name, p[1]))
         else:
@@ -98,7 +98,7 @@ def read_json_file(file_path):
                     objs = []
                     for obj in obj_names:
                         obj_name, obj_type = obj.split("?")
-                        objs.append(TypedObject(obj_type, obj_name))
+                        objs.append(TypedObject(obj_name, obj_type))
                     action = ActionSignature(action_name, objs)
                     step = Step(action, State(), i)
                     steps.append(step)

@@ -18,8 +18,11 @@ class OCM(ABC):
     def __init__(self,state_param:bool=True,viz=False, timeout:int = 600, debug: Dict[str, bool]=None):
         self.state_param = state_param
         self.timeout = timeout
-        debug = defaultdict(lambda: False, debug)
-        self.debug = debug
+        if debug:
+            formatted_debug = defaultdict(lambda: False, debug)
+        else:
+            formatted_debug = {}
+        self.debug = formatted_debug
         self.viz = viz
 
     @abstractmethod

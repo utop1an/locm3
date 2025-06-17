@@ -7,7 +7,7 @@ import pandas as pd
 
 class LOCM(OCM):
 
-    TransitionSet = Dict[int, Dict[TypedObject, List[Event]]]
+    TransitionSet = Dict[int, Dict[TypedObject, List[List[SingletonEvent]]]]
     ObjectStates = Dict[int, List[Set[int]]]
     EventStatePointers = Dict[int, Dict[Event, StatePointers]]
     Binding = NamedTuple("Binding", [("hypothesis", Hypothesis), ("param", int)])
@@ -58,7 +58,8 @@ class LOCM(OCM):
                         ap = SingletonEvent(action, pos=j + 1, sort=sorts[obj.name])
                         obj_traces[obj].append(ap)
                         added_objs.append(obj)
-        obj_traces_list.append(obj_traces)
+      
+            obj_traces_list.append(obj_traces)
         return obj_traces_list
     
     def get_TS_OS(self, obj_traces_list: List[OCM.ObjectTrace], sorts) -> tuple[TransitionSet, ObjectStates, Dict[int, Dict[Event, StatePointers]]]:
@@ -66,7 +67,7 @@ class LOCM(OCM):
         Convert a list of object traces to a list of transition matrices.
         
         """
-        TS: LOCM.TransitionSet = defaultdict(dict)
+        TS: LOCM.TransitionSet = defaultdict(lambda: defaultdict(list))
         OS: LOCM.ObjectStates = defaultdict(list)
         ap_state_pointers = defaultdict(dict)
 
@@ -76,7 +77,7 @@ class LOCM(OCM):
          # iterate over each object and its action sequence
             for obj, seq in obj_traces.items():
                 sort = sorts[obj.name] if obj != zero_obj else 0
-                TS[sort][obj] = seq  # add the sequence to the transition set
+                TS[sort][obj].append(seq)  # add the sequence to the transition set
                 # max of the states already in OS[sort], plus 1
                 state_n = (
                     max([max(s) for s in OS[sort]] + [0]) + 1
@@ -114,9 +115,12 @@ class LOCM(OCM):
                     prev_states = ap_states
 
             # remove the zero-object sort if it only has one state
-            if len(OS[0]) == 1:
-                ap_state_pointers[0] = {}
-                OS[0] = []
+            # if len(OS[0]) == 1:
+            #     ap_state_pointers[0] = {}
+            #     OS[0] = []
+            # TODO: zero analysis error
+            ap_state_pointers[0] = {}
+            OS[0] = []
 
         return TS, OS, ap_state_pointers
     
@@ -139,7 +143,7 @@ class LOCM(OCM):
     ) -> Hypothesis:
         """Step 3: Induction of parameterised FSMs"""
 
-        zero_obj = LOCM.ZEROOBJ
+        zero_obj = OCM.ZEROOBJ
 
         # indexed by B.k and C.l for 3.2 matching hypotheses against transitions
         HS: Dict[HIndex, Set[HItem]] = defaultdict(set)
@@ -148,47 +152,48 @@ class LOCM(OCM):
         for G, sort_ts in TS.items():
             
             # for each O ∈ O_u (not including the zero-object)
-            for obj, seq in sort_ts.items():
+            for obj, seqs in sort_ts.items():
                 if obj == zero_obj:
                     continue
+                for seq in seqs:
                 # for each pair of transitions B.k and C.l consecutive for O
-                for B, C in zip(seq, seq[1:]):
-                    # skip if B or C only have one parameter, since there is no k' or l' to match on
-                    if len(B.action.obj_params) == 1 or len(C.action.obj_params) == 1:
-                        continue
-
-                    k = B.pos
-                    l = C.pos
-
-                    # check each pair B.k' and C.l'
-                    for i, Bk_ in enumerate(B.action.obj_params):
-                        k_ = i + 1
-                        if k_ == k:
+                    for B, C in zip(seq, seq[1:]):
+                        # skip if B or C only have one parameter, since there is no k' or l' to match on
+                        if len(B.action.obj_params) == 1 or len(C.action.obj_params) == 1:
                             continue
-                        G_ = sorts[Bk_.name]
 
-                        for j, Cl_ in enumerate(C.action.obj_params):
-                            l_ = j + 1
-                            if l_ == l:
+                        k = B.pos
+                        l = C.pos
+
+                        # check each pair B.k' and C.l'
+                        for i, Bk_ in enumerate(B.action.obj_params):
+                            k_ = i + 1
+                            if k_ == k:
                                 continue
+                            G_ = sorts[Bk_.name]
 
-                            # check that B.k' and C.l' are of the same sort
-                            if sorts[Cl_.name] == G_:
-                                # check that end(B.P) = start(C.P)
-                                # NOTE: just a sanity check, should never fail
-                                S, S2 = LOCM._pointer_to_set(
-                                    OS[G],
-                                    ap_state_pointers[G][B].end,
-                                    ap_state_pointers[G][C].start,
-                                )
-                                assert (
-                                    S == S2
-                                ), f"end(B.P) != start(C.P)\nB.P: {B}\nC.P: {C}"
+                            for j, Cl_ in enumerate(C.action.obj_params):
+                                l_ = j + 1
+                                if l_ == l:
+                                    continue
 
-                                # save the hypothesis in the hypothesis set
-                                HS[HIndex(B, k, C, l)].add(
-                                    HItem(S, k_, l_, G, G_, supported=False)
-                                )
+                                # check that B.k' and C.l' are of the same sort
+                                if sorts[Cl_.name] == G_:
+                                    # check that end(B.P) = start(C.P)
+                                    # NOTE: just a sanity check, should never fail
+                                    S, S2 = LOCM._pointer_to_set(
+                                        OS[G],
+                                        ap_state_pointers[G][B].end,
+                                        ap_state_pointers[G][C].start,
+                                    )
+                                    assert (
+                                        S == S2
+                                    ), f"end(B.P) != start(C.P)\nB.P: {B}\nC.P: {C}"
+
+                                    # save the hypothesis in the hypothesis set
+                                    HS[HIndex(B, k, C, l)].add(
+                                        HItem(S, k_, l_, G, G_, supported=False)
+                                    )
 
         # 3.2: Test hypotheses against sequence
         for G, sort_ts in TS.items():
@@ -196,23 +201,24 @@ class LOCM(OCM):
             for obj, seq in sort_ts.items():
                 if obj == zero_obj:
                     continue
-                # for each pair of transitions Ap.m and Aq.n consecutive for O
-                for Ap, Aq in zip(seq, seq[1:]):
-                    m = Ap.pos
-                    n = Aq.pos
-                    # Check if we have a hypothesis matching Ap=B, m=k, Aq=C, n=l
-                    BkCl = HIndex(Ap, m, Aq, n)
-                    if BkCl in HS:
-                        # check each matching hypothesis
-                        for H in HS[BkCl].copy():
-                            # if Op,k' = Oq,l' then mark the hypothesis as supported
-                            if (
-                                Ap.action.obj_params[H.k_ - 1]
-                                == Aq.action.obj_params[H.l_ - 1]
-                            ):
-                                H.supported = True
-                            else:  # otherwise remove the hypothesis
-                                HS[BkCl].remove(H)
+                for seq in seqs:
+                    # for each pair of transitions Ap.m and Aq.n consecutive for O
+                    for Ap, Aq in zip(seq, seq[1:]):
+                        m = Ap.pos
+                        n = Aq.pos
+                        # Check if we have a hypothesis matching Ap=B, m=k, Aq=C, n=l
+                        BkCl = HIndex(Ap, m, Aq, n)
+                        if BkCl in HS:
+                            # check each matching hypothesis
+                            for H in HS[BkCl].copy():
+                                # if Op,k' = Oq,l' then mark the hypothesis as supported
+                                if (
+                                    Ap.action.obj_params[H.k_ - 1]
+                                    == Aq.action.obj_params[H.l_ - 1]
+                                ):
+                                    H.supported = True
+                                else:  # otherwise remove the hypothesis
+                                    HS[BkCl].remove(H)
 
         # Remove any unsupported hypotheses (but yet undisputed)
         for hind, hs in HS.copy().items():
@@ -303,7 +309,7 @@ class LOCM(OCM):
 
                 # track all the h.Bs that occur in bindings[G][S]
                 pointers = OS[fsm][state]
-                # TODO: locm only checks for inaps, but outaps?
+                
                 inaps = set(ap for ap, (start, end) in ap_state_pointers[fsm].items() if end in pointers)
                 outaps = set(ap for ap, (start, end) in ap_state_pointers[fsm].items() if start in pointers)        
                 
