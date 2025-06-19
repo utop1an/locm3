@@ -376,7 +376,6 @@ class LOCM(OCM):
         for aps in ap_state_pointers.values():
             for ap in aps:
                 all_aps[ap.action.name].add(ap)
-        print(all_aps)
         def get_type(sort):
             if sort_to_type_dict:
                 return sort_to_type_dict[sort]

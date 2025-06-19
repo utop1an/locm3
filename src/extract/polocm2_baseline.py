@@ -13,8 +13,9 @@ import time
 
 class POLOCM2BASELINE(POBASELINE, LOCM2):
 
-    def __init__(self, cores= 1,state_param:bool=True, viz=False, timeout:int = 600, debug: Dict[str, bool]=None):
+    def __init__(self,solver_path="default", cores= 1,state_param:bool=True, viz=False, timeout:int = 600, debug: Dict[str, bool]=None):
         super().__init__(state_param=state_param, viz=viz, timeout=timeout, debug=debug)
+        self.solver_path = solver_path
         self.cores = cores
 
     def extract_model(self, po_trace_list: List[PartialOrderedTrace], type_dict: Dict[str, int] = None) -> LearnedModel:

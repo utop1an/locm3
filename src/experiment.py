@@ -36,13 +36,21 @@ def setup_logger(log_file):
 
     return logger
 
-def run_single_experiment(cplex_dir,cplex_threads, extraction, learning_obj, dod , test_data, invalid_test_suffixes, logger):
+def run_single_experiment(cplex_dir,cplex_threads, extraction_type, learning_obj, dod , test_data, invalid_test_suffixes, logger):
     """Runs a single experiment given the necessary parameters."""
     domain = learning_obj['domain']
     traces = learning_obj['traces']
     all_po_traces = learning_obj['po_traces']
 
     logger.info(f"Running {domain}-lo.{learning_obj['id']}-{dod} ...")
+
+    extractions = {
+        'p2': POLOCM2,
+        'p': POLOCM,
+        'p2b': POLOCM2BASELINE,
+        'pb': POLOCMBASELINE
+    }
+    extraction = extractions[extraction_type]
 
     
     try:
@@ -89,15 +97,15 @@ def run_single_experiment(cplex_dir,cplex_threads, extraction, learning_obj, dod
         'invalid_acceptance_rate': invalid_acceptance_rate,  # Placeholder for invalid acceptance rate
         'remark': remark
     }
-    write_result_to_csv(dod, result_data)
+    write_result_to_csv(dod, extraction_type, result_data)
     return
 
 
 
 
-def write_result_to_csv(dod, result_data):
+def write_result_to_csv(dod, extraction_type, result_data):
     """Writes the result data to a CSV file in a thread-safe manner."""
-    csv_file_path = os.path.join(OUTPUT_DIR, f"results_{dod}.csv")
+    csv_file_path = os.path.join(OUTPUT_DIR, f"results_{dod}_{extraction_type}.csv")
     with lock:
         file_exists = os.path.exists(csv_file_path)
         with open(csv_file_path, 'a') as csv_file:
@@ -185,7 +193,7 @@ def get_acceptance_rate(learned_domain, test_data, invalid_test_suffixes):
 
 
 
-def experiment(cplex_dir, experiment_threads, cplex_threads, extraction, dod, train_data, test_data, invalid_test_suffixes):
+def experiment(cplex_dir, experiment_threads, cplex_threads, extraction_type, dod, train_data, test_data, invalid_test_suffixes):
     log_filename = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     log_filepath = os.path.join("./logs", log_filename)
     logger = setup_logger(log_filepath)
@@ -197,7 +205,7 @@ def experiment(cplex_dir, experiment_threads, cplex_threads, extraction, dod, tr
     tasks = []
     for item in train_data:
         domain = item['domain']
-        tasks.append((cplex_dir,cplex_threads, extraction, item, dod, test_data[domain], invalid_test_suffixes[domain], logger))
+        tasks.append((cplex_dir,cplex_threads, extraction_type, item, dod, test_data[domain], invalid_test_suffixes[domain], logger))
         
         
     
@@ -262,16 +270,10 @@ def main(args):
     cplex_dir = args.cplex
     extraction_type = args.e
 
-    extractions = {
-        'p2': POLOCM2,
-        'p': POLOCM,
-        'p2b': POLOCM2BASELINE,
-        'pb': POLOCMBASELINE
-    }
-    if extraction_type not in extractions:
+    if extraction_type not in ['p2', 'p', 'p2b', 'pb']:
         print(f"Invalid extraction type {extraction_type}. Choose from ['p2', 'p', 'p2b','pb']")
         return
-    extraction = extractions[extraction_type]
+
 
     DEBUG = args.debug
 
@@ -313,7 +315,7 @@ def main(args):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    experiment(cplex_dir, experiment_threads, cplex_threads, extraction, dod, train_data, test_data, invalid_test_suffixes)
+    experiment(cplex_dir, experiment_threads, cplex_threads, extraction_type, dod, train_data, test_data, invalid_test_suffixes)
 
 
 if __name__ == "__main__":
