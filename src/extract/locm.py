@@ -60,9 +60,15 @@ class LOCM(OCM):
                         added_objs.append(obj)
       
             obj_traces_list.append(obj_traces)
-        return obj_traces_list
+        
+        grouped_obj_traces = defaultdict(list)
+        for obj_traces in obj_traces_list:
+            for obj, seq in obj_traces.items():
+                grouped_obj_traces[obj].append(seq)
+
+        return grouped_obj_traces
     
-    def get_TS_OS(self, obj_traces_list: List[OCM.ObjectTrace], sorts) -> tuple[TransitionSet, ObjectStates, Dict[int, Dict[SingletonEvent, StatePointers]]]:
+    def get_TS_OS(self, obj_traces, sorts) -> tuple[TransitionSet, ObjectStates, Dict[int, Dict[SingletonEvent, StatePointers]]]:
         """
         Convert a list of object traces to a list of transition matrices.
         
@@ -72,10 +78,9 @@ class LOCM(OCM):
         ap_state_pointers = defaultdict(dict)
 
         zero_obj = OCM.ZEROOBJ
-
-        for obj_traces in obj_traces_list:
+        for obj, seqs in obj_traces.items():
          # iterate over each object and its action sequence
-            for obj, seq in obj_traces.items():
+            for seq in seqs:
                 sort = sorts[obj.name] if obj != zero_obj else 0
                 TS[sort][obj].append(seq)  # add the sequence to the transition set
                 # max of the states already in OS[sort], plus 1
@@ -118,9 +123,7 @@ class LOCM(OCM):
         if len(OS[0]) == 1:
             ap_state_pointers[0] = {}
             OS[0] = []
-            # # TODO: zero analysis error
-            # ap_state_pointers[0] = {}
-            # OS[0] = []
+ 
 
         return TS, OS, ap_state_pointers
     
@@ -366,13 +369,14 @@ class LOCM(OCM):
             shift = 1
         else:
             shift = 0
-
+        
 
         # all_aps = {action_name: [AP]}
         all_aps: Dict[str, Set[SingletonEvent]] = defaultdict(set)
         for aps in ap_state_pointers.values():
             for ap in aps:
                 all_aps[ap.action.name].add(ap)
+        print(all_aps)
         def get_type(sort):
             if sort_to_type_dict:
                 return sort_to_type_dict[sort]
