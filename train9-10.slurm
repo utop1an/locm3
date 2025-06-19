@@ -22,7 +22,7 @@ for dod in 0.9 1; do
         -B ~/locm3/data/:/data \
         -B ~/locm3/logs:/logs \
         -B ~/locm3/output/:/output \
-        ~/locm3/polocm.sif python3 /src/experiment.py --i ./data/traces_plan_r1.json --o ./output \
+        ~/locm3/polocm.sif python3 /src/experiment.py \
         --ct 2 --et 8 \
         --d $dod \
         --cplex /opt/cplex/cplex/bin/x86-64_linux/cplex \
