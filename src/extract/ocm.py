@@ -19,10 +19,10 @@ class OCM(ABC):
         self.state_param = state_param
         self.timeout = timeout
         if debug:
-            formatted_debug = defaultdict(lambda: False, debug)
+            debug = defaultdict(lambda: False, debug)
         else:
-            formatted_debug = {}
-        self.debug = formatted_debug
+            debug = defaultdict(lambda: False)
+        self.debug = debug
         self.viz = viz
 
     @abstractmethod

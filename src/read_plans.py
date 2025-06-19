@@ -52,22 +52,15 @@ def process_domain(domain, solution_dir, task_dir, trace_length, num_traces, rdP
         if not os.path.exists(task_filepath):
             continue
 
-        planner = RandomPlanner(domain_filepath, task_filepath, plan_len=trace_length, num_traces=num_traces, max_time=rdPlannerTimeout)
+        planner = RandomPlanner(domain_filepath, task_filepath, trace_len=trace_length, num_traces=num_traces, max_time=rdPlannerTimeout)
         number_of_objects = len(planner.task.objects)
         if max_objects is not None and number_of_objects > max_objects:
             continue
 
-        plan = generate_trace(plan_filepath, task_filepath, planner)
+        plan = generate_trace(plan_filepath, planner)
         plan_data = f"{domain}&&{'plan'}&&{task_file}&&{'easy'}&&{number_of_objects}&&{len(plan)}&&{','.join(plan)}\n"
         output_data.append(plan_data)
         
-        random_walks = planner.generate_traces()
-
-        
-
-        for trace in random_walks:
-            trace_data = f"{domain}&&{'rand'}&&{task_file}&&{'easy'}&&{number_of_objects}&&{len(trace)}&&{','.join(trace)}\n"
-            output_data.append(trace_data)
 
     logging.info(f"{domain} done...")
     return output_data

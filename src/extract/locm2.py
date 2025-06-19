@@ -26,7 +26,6 @@ class LOCM2(OCM):
     def extract_model(self, trace_list, types=None):
         
         sorts, sort_to_type_dict = self._get_sorts(trace_list, types)
-        
         obj_traces, TM_list = self.trace_to_obj_trace(trace_list, sorts)
         transition_sets_per_sort_list = self.split_transitions(TM_list, obj_traces, sorts)
         TS, OS, ap_state_pointers = self.get_TS_OS(obj_traces, transition_sets_per_sort_list, TM_list, sorts)
@@ -36,6 +35,12 @@ class LOCM2(OCM):
             bindings = None
         model = self.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False)
         return model
+    
+    def get_TM_list(self, trace_list, types=None):
+        sorts, _ = self._get_sorts(trace_list, types)
+        _, TM_list = self.trace_to_obj_trace(trace_list, sorts)
+        return TM_list
+
     
 
     def trace_to_obj_trace(self, trace_list, sorts, debug=False)-> Tuple:
@@ -85,7 +90,7 @@ class LOCM2(OCM):
         for sort, G in enumerate(graphs):
             TM = nx.to_pandas_adjacency(G, nodelist=G.nodes(), dtype=int)
             TM_list.append(TM)
-            if debug:
+            if self.debug['trace_to_obj_trace']:
                 print(f"Transition matrix for sort {sort}:")
                 pprint_table(TM)
 
@@ -138,7 +143,7 @@ class LOCM2(OCM):
             # Convert NumPy array back to DataFrame
             df1 = pd.DataFrame(df1, index=df.index, columns=df.columns)
 
-            if self.debug: 
+            if self.debug['find_holes']: 
                 print(f"Sort.{sort} TM with holes:")
                 pprint_table(df1)
 
@@ -158,7 +163,7 @@ class LOCM2(OCM):
                     if TM_with_holes.iloc[i, j] == -1:
                         holes.add(frozenset({TM_with_holes.index[i], TM_with_holes.columns[j]}))
             holes_per_sort_list.append(holes)
-            if self.debug:
+            if self.debug['extract_holes']:
                 print("#holes in Sort.{}: {}".format(sort, len(holes)))
                 if (len(holes) > 0):
                     print(holes)
@@ -245,7 +250,7 @@ class LOCM2(OCM):
             # Step 8: Include all-transitions machine, even if it is not well-formed
             non_redundant_sets.append(set(transitions))
 
-            if debug:
+            if self.debug['get_transition_sets']:
                 print("#### Final transition set list for sort index", sort)
                 for ts in non_redundant_sets:
                     print(set(ts))

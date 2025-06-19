@@ -8,12 +8,12 @@ from pddl import TypedObject, ActionSignature
 
 SEED=42
 random.seed(SEED)
-REPEAT = 5
-TRACELENGTH = [10,15,30,50,75,100]
-NUMBEROFTRACES =[1,3,5,10,25,50,100]
-COUNTER = 0
+REPEAT = 1
+TRACELENGTH = [10,20,30,50,100]
+NUMBEROFTRACES =[1,5,10] # small medium large
 FLEX = [0.1,0.2,0.3,0.4,0.5, 0.6,0.7,0.8,0.9,1]
 PO = False
+COUNTER = 0
 
 def write_to_file(output_data, file_path):
     print(f"Writing to file {file_path} with {len(output_data)} traning data")
@@ -23,28 +23,16 @@ def write_to_file(output_data, file_path):
     except Exception as e:
         print(f"Error writing to file {file_path}: {e}")
 
-def sample_combined(df, number_of_traces):
-    
-    types = df['type'].unique()
-    p1 = df[df['type'] == types[0]]
-    p2 = df[df['type'] == types[1]]
-
-    p1_traces = p1.sample(n=number_of_traces//2, random_state=SEED)
-    p2_traces = p2.sample(n=number_of_traces-len(p1_traces), random_state=SEED)
-
-    return pd.concat([p1_traces, p2_traces])
 
 
-def generate_trace(domain, df, number_of_traces,combined, overall_length, trace_length=None):
+def generate_trace(domain, df, number_of_traces,trace_type, overall_length, trace_length=None):
     global COUNTER
     output = []
     for i in range(REPEAT):
         number_of_traces = min(number_of_traces, len(df))
-        if combined == "combined":
-            rows = sample_combined(df, number_of_traces)
-        elif combined == "plan":
+        if trace_type == "plan":
             rows = df[df['type'] == 'plan'].sample(n=number_of_traces)
-        elif combined == "random":
+        elif trace_type == "random":
             rows = df[df['type'] == 'rand'].sample(n=number_of_traces, random_state=SEED)
         
       
@@ -72,7 +60,8 @@ def generate_trace(domain, df, number_of_traces,combined, overall_length, trace_
                 op = plain_op.strip('()').split(' ')
                 trace.append({'action': op[0], 'objs': op[1:]})
             traces.append(trace)
-            if total_length + len(rand_trace) >= 1000:
+            # Check if the total length exceeds 1000
+            if total_length + len(rand_trace) > 1000:
                 break
         if len(traces) == 0:
             continue
@@ -122,8 +111,7 @@ def get_PO_data(raw_traces):
             
             for po_step in po_trace:
 
-                if (type(po_step) != PartialOrderedStep):
-                    continue
+                assert type(po_step) == PartialOrderedStep, f"Expected PartialOrderedStep, got {type(po_step)}"
                 ind.append(po_step.index)
                 po.append(po_step.successors)
             pos.append(po)
@@ -156,8 +144,8 @@ def main(args):
     REPEAT = repeat
 
     
-    if combined not in ["combined", "plan", "random"]:
-        print("Invalid combination type. Choose from combined, plan, random")
+    if combined not in [ "plan", "random"]:
+        print("Invalid combination type. Choose from plan, random")
         return
 
     if not os.path.exists(input_filepath):
@@ -189,7 +177,7 @@ def main(args):
                 output_data= output_data + output
     
     output_filename_pre = 'traces'
-    output_filename_pre += f'_{combined}_r{REPEAT}'
+    output_filename_pre += f'_{combined}{'_po' if PO else ''}_r{REPEAT}'
     output_filename = f'{output_filename_pre}.json'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -209,6 +197,19 @@ if __name__ == '__main__':
     main(args)
 
 """
+Read the plain_traces, generate training data in json format.
+plain_traces.txt is expected to be in the format:
+domain&&type&&problem_name&&difficulty&&number_of_objects&&plan_len&&trace
+
+where:
+- domain: domain name
+- type: 'plan' or 'rand'
+- problem_name: name of the problem
+- difficulty: difficulty of the problem
+- number_of_objects: number of objects in the problem
+- plan_len: length of the plan
+- trace: trace of the plan or random walk
+
 Directly run to generate training data with no PO data.
 
 run with:

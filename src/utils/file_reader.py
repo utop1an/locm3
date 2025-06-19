@@ -114,13 +114,13 @@ def read_json_file(file_path):
                 for k, poat in enumerate(poats):
                     
                     actual_flex = poat['actual_flex']
-                    po = poat['pos']
+                    pos = poat['pos']
                     inds = poat['inds']
 
                     po_traces = []
 
-                    for l, trace in traces:
-                        po = po[l]
+                    for l, trace in enumerate(traces):
+                        po = pos[l]
                         ind = inds[l]
                         po_steps = []
 

@@ -106,6 +106,11 @@ class SASTask:
         for axiom in self.axioms:
             task_size += axiom.get_encoding_size()
         return task_size
+    
+    def get_operator(self, op_name):
+        for op in self.operators:
+            if op.name == op_name:
+                return op
 
 
 class SASVariables:

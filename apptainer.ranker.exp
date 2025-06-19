@@ -1,0 +1,55 @@
+Bootstrap: localimage
+From: ubuntu2204.sif
+Stage: build
+
+%files
+    src
+    data
+    requirements.txt
+    
+    # copy cplex form local installation
+    /home/uto/cplex/cplex/ /opt/cplex/cplex
+    /home/uto/cplex/concert /opt/cplex/concert
+%post
+    apt-get update -y
+    # Using "noninteractive" mode runs apt-get while ensuring that there are
+    # no user prompts that would cause the `singularity build` command to hang.
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        software-properties-common
+    add-apt-repository universe
+    # Downloads the latest package lists (important).
+    apt-get update -y
+    # python3-tk is required by matplotlib.
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        python3 \
+        python3-tk \
+        python3-pip \
+        python3-distutils \
+        python3-setuptools
+
+
+
+
+    # Add CPLEX and its libraries to the environment
+    echo 'export PATH=/opt/cplex/cplex/bin/x86-64_linux:$PATH' >> /etc/environment
+    echo 'export LD_LIBRARY_PATH=/opt/cplex/cplex/bin/x86-64_linux:$LD_LIBRARY_PATH' >> /etc/environment
+    echo 'export CPLEX_STUDIO_DIR=/opt/cplex' >> /etc/environment
+
+    # Reduce the size of the image by deleting the package lists we downloaded,
+    # which are useless now.
+    rm -rf /var/lib/apt/lists/*
+
+    # pip install --upgrade pip setuptools wheel
+
+    # Install Python modules.
+    pip install -r requirements.txt
+
+
+    mkdir /output
+    mkdir /logs
+
+%environment
+    # Set environment variables for CPLEX when the container is run
+    export PATH=/opt/cplex/cplex/bin/x86-64_linux:$PATH
+    export LD_LIBRARY_PATH=/opt/cplex/cplex/bin/x86-64_linux:$LD_LIBRARY_PATH
+    export CPLEX_STUDIO_DIR=/opt/cplex

@@ -10,6 +10,7 @@ import networkx as nx
 import pulp as pl
 from itertools import combinations
 from utils.helpers import pprint_table, check_well_formed, check_valid, complete_PO, complete_FO
+import time
 
 class POLOCM2(LOCM2):
 
@@ -18,19 +19,23 @@ class POLOCM2(LOCM2):
         self.solver_path = solver_path
         self.cores = cores
 
-    def extract_model(self, PO_trace_list: List[PartialOrderedTrace], type_dict: Dict[str, int] = None) -> LearnedModel:
 
+    def extract_model(self, PO_trace_list: List[PartialOrderedTrace], type_dict: Dict[str, int] = None) -> LearnedModel:
+        start = time.time()
         sorts, sort_to_type_dict = self._get_sorts(PO_trace_list, type_dict)
         obj_traces_list, TM_list = self.solve_po(PO_trace_list, sorts)
-   
+        
+        po_time = time.time() - start
         transition_sets_per_sort_list = self.split_transitions(TM_list, obj_traces_list, sorts)
+        locm2_time = time.time() - start - po_time
         TS, OS, ap_state_pointers = self.get_TS_OS(obj_traces_list, transition_sets_per_sort_list, TM_list, sorts)
         if self.state_param:
             bindings = self.get_state_bindings(TS, ap_state_pointers, OS, sorts, TM_list, debug=self.debug)
         else:
             bindings = None
         model = self.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False)
-        return model
+        locm_time = time.time() - start - po_time - locm2_time
+        return model, TM_list, (po_time, locm2_time, locm_time)
         
 
     def solve_po(self, PO_trace_list, sorts):
@@ -449,7 +454,7 @@ class POLOCM2(LOCM2):
         FO_vars_overall,
         sort_transition_matrix,
         AP_vars_overall,
-        solution,):
+        solution):
 
         sol_PO_matrix = obj_trace_PO_matrix_overall.copy()
         obj_traces_list = []

@@ -1,4 +1,4 @@
-from .ocm import OCM, TypedObject, Event, SingletonEvent, StatePointers
+from .ocm import OCM, TypedObject, SingletonEvent, StatePointers
 from pddl import ActionSignature, LearnedModel, LearnedLiftedFluent, LearnedAction
 from typing import Dict, List, Set, NamedTuple
 from collections import defaultdict
@@ -9,7 +9,7 @@ class LOCM(OCM):
 
     TransitionSet = Dict[int, Dict[TypedObject, List[List[SingletonEvent]]]]
     ObjectStates = Dict[int, List[Set[int]]]
-    EventStatePointers = Dict[int, Dict[Event, StatePointers]]
+    EventStatePointers = Dict[int, Dict[SingletonEvent, StatePointers]]
     Binding = NamedTuple("Binding", [("hypothesis", Hypothesis), ("param", int)])
     Bindings = Dict[int, Dict[int, List[Binding]]]  # {sort: {state: [Binding]}}
 
@@ -62,7 +62,7 @@ class LOCM(OCM):
             obj_traces_list.append(obj_traces)
         return obj_traces_list
     
-    def get_TS_OS(self, obj_traces_list: List[OCM.ObjectTrace], sorts) -> tuple[TransitionSet, ObjectStates, Dict[int, Dict[Event, StatePointers]]]:
+    def get_TS_OS(self, obj_traces_list: List[OCM.ObjectTrace], sorts) -> tuple[TransitionSet, ObjectStates, Dict[int, Dict[SingletonEvent, StatePointers]]]:
         """
         Convert a list of object traces to a list of transition matrices.
         
@@ -115,12 +115,12 @@ class LOCM(OCM):
                     prev_states = ap_states
 
             # remove the zero-object sort if it only has one state
-            # if len(OS[0]) == 1:
-            #     ap_state_pointers[0] = {}
-            #     OS[0] = []
-            # TODO: zero analysis error
+        if len(OS[0]) == 1:
             ap_state_pointers[0] = {}
             OS[0] = []
+            # # TODO: zero analysis error
+            # ap_state_pointers[0] = {}
+            # OS[0] = []
 
         return TS, OS, ap_state_pointers
     
@@ -369,11 +369,10 @@ class LOCM(OCM):
 
 
         # all_aps = {action_name: [AP]}
-        all_aps: Dict[str, Set[Event]] = defaultdict(set)
+        all_aps: Dict[str, Set[SingletonEvent]] = defaultdict(set)
         for aps in ap_state_pointers.values():
             for ap in aps:
                 all_aps[ap.action.name].add(ap)
-
         def get_type(sort):
             if sort_to_type_dict:
                 return sort_to_type_dict[sort]

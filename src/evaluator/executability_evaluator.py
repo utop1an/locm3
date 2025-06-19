@@ -97,25 +97,17 @@ class ExecutabilityEvaluator:
         return True
         
 
-    def get_acceptance_rate(self, valid_seqs, invalid_seqs, debug=False):
+    def get_acceptance_rate(self, valid_seq, invalid_suffixes=None):
         if not self.learned_domain:
             raise Exception("Domain not initialized")
         
-        assert len(valid_seqs) > 0, f"Valid seqs should not be empty"
-        assert len(invalid_seqs) > 0, f"Invalid seqs should not be empty"
-        
-        valid_res = []
-        invalid_res = []
-
-        for i in range(len(valid_seqs)):
-            exe = self.get_first_fail_executability('l',valid_seqs[i],set(),set(), True )
-            valid_res.append(exe)
-        for j in range(len(invalid_seqs)):
-            exe = self.get_first_fail_executability('l',invalid_seqs[j], set(),set(),True)
-            invalid_res.append(exe)
-
-        valid_acceptance = sum(valid_res)/len(valid_res)
-        invalid_acceptance = sum(invalid_res)/len(invalid_res)
+        valid_acceptance = self.get_first_fail_executability('l',valid_seq, set(), set(),None, True )
+     
+        if invalid_suffixes:
+            invalid_acceptance = self.get_first_fail_executability('l', valid_seq, set(), set(), invalid_suffixes, True)
+     
+        else:
+            invalid_acceptance = 0
         return valid_acceptance, invalid_acceptance
 
     def get_balanced_executability(self, valid_seqs, invalid_seqs,binary=False, debug=False):
@@ -423,7 +415,7 @@ class ExecutabilityEvaluator:
 
     
         
-    def get_first_fail_executability(self,domain_type, action_sequence,  _true_effs, _visited, binary=False):
+    def get_first_fail_executability(self,domain_type, action_sequence,  _true_effs, _visited, suffixes=None, binary=True):
         if domain_type == 'l':
             domain = self.learned_domain
         elif domain_type == 'gt':
@@ -442,8 +434,8 @@ class ExecutabilityEvaluator:
         for i, a in enumerate(action_sequence):
             if isinstance(a, Step):
                 a = a.action
-            action = self.learned_domain.get_action(a.name)
-            if not action and binary:
+            action = domain.get_action(a.name)
+            if not action:
                 if binary:
                     return 0
                 else:
@@ -489,7 +481,58 @@ class ExecutabilityEvaluator:
             true_effs = true_effs.union(adds)
             true_effs.difference_update(dels)
 
-        return (i+1)/len(action_sequence)
+        if not suffixes:
+            return (i+1)/len(action_sequence)
+        
+        suffixes_res = []
+        
+        for suffix in suffixes:
+            if isinstance(suffix, Step):
+                suffix = suffix.action
+            action = domain.get_action(suffix.name)
+            if not action:
+                if binary:
+                    suffixes_res.append(0)
+                    continue
+                else:
+                    suffixes_res.append((i+1)/(len(action_sequence)+1))
+                    continue
+
+            param_names = [p.name for p in action.parameters]
+            param_types = [p.type_name for p in action.parameters]
+            params = [obj.name for obj in suffix.obj_params]
+            if ('s0' in param_types):
+                index= param_types.index('s0')
+                params.insert(index, 'zero')
+            elif ('zero' in param_types):
+                index= param_types.index('zero')
+                params.insert(index, 'zero')
+            var_mapping = dict(zip(param_names, params))
+            
+            objects_by_type = dict(zip(params, param_types))
+            op = action.instantiate(var_mapping,None, None,None, objects_by_type,None)
+            # check applicable
+            preconditions = set(op.precondition)
+            invalid = preconditions.difference(true_effs)
+            invalid = invalid.intersection(visited)
+
+            # not applicable
+            if(len(invalid)>0):
+                if self.debug:
+                    print(f"action {op} not executable")
+                    print("preconditions not satisfied: ", invalid)
+                if binary:
+                    suffixes_res.append(0)
+                else:
+                    suffixes_res.append((i+1)/(len(action_sequence)+1))
+            else:
+                suffixes_res.append(1)
+        return sum(suffixes_res)/len(suffixes_res)
+            
+            
+
+
+        
             
 
 
