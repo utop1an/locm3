@@ -21,7 +21,7 @@ class LOCM(OCM):
         
         sorts, sort_to_type_dict = self._get_sorts(tracelist, types)
         
-        obj_trace_list = self.trace_to_obj_trace(tracelist, sorts)
+        obj_trace_list, TM_list = self.trace_to_obj_trace(tracelist, sorts)
         TS, OS, ap_state_pointers = self.get_TS_OS(obj_trace_list, sorts)
         if self.state_param:
             bindings = self.get_state_bindings(TS, ap_state_pointers, OS, sorts, debug=self.debug)
@@ -32,41 +32,11 @@ class LOCM(OCM):
 
 
 
-    def trace_to_obj_trace(self, trace_list, sorts: Dict):
-        """
-        Convert a list of traces to a list of object traces.
-        Each object trace is a dictionary mapping each object to a list of events.
-        
-        """
-        # create the zero-object for zero analysis (step 2)
-        zero_obj = OCM.ZEROOBJ
-        
-        # collect action sequences for each object
-        obj_traces_list: List[OCM.ObjectTrace] = []
-        for trace in trace_list:
-            obj_traces: OCM.ObjectTrace = defaultdict(list)
-            for step in trace.steps:
-                action = step.action
-                if action is not None:
-                    # add the step for the zero-object
-                    obj_traces[zero_obj].append(SingletonEvent(action, pos=0, sort=0))
-                    # for each combination of action name A and argument pos P
-                    added_objs = []
-                    for j, obj in enumerate(action.obj_params):
-                        # create transition A.P
-                        assert obj not in added_objs, "LOCMv1 cannot handle duplicate objects in the same action."
-                        ap = SingletonEvent(action, pos=j + 1, sort=sorts[obj.name])
-                        obj_traces[obj].append(ap)
-                        added_objs.append(obj)
-      
-            obj_traces_list.append(obj_traces)
-        
-        grouped_obj_traces = defaultdict(list)
-        for obj_traces in obj_traces_list:
-            for obj, seq in obj_traces.items():
-                grouped_obj_traces[obj].append(seq)
+    
+    
 
-        return grouped_obj_traces
+    
+    
     
     def get_TS_OS(self, obj_traces, sorts) -> tuple[TransitionSet, ObjectStates, Dict[int, Dict[SingletonEvent, StatePointers]]]:
         """

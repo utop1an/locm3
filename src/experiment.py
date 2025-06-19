@@ -127,8 +127,7 @@ def solve(cplex_dir,cplex_threads, extraction,po_traces ,traces, domain_name, te
         model, TM , runtime = extraction_method.extract_model(po_traces)
     
         pddl_model = model.to_pddl_domain(domain_name)
-        locm2 = LOCM2()
-        golden_TM = locm2.get_TM_list(traces)
+        golden_TM = extraction_method.get_TM_list(traces)
     
         accuracy_val,error_rate, r = get_AP_accuracy(TM, golden_TM)
         if r:

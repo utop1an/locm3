@@ -39,63 +39,6 @@ class LOCM2(OCM):
         model = self.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False)
         return model
     
-
-    def trace_to_obj_trace(self, trace_list, sorts, debug=False)-> Tuple:
-        """
-        Convert a list of traces to a list of object traces.
-        Each object trace is a dictionary mapping each object to a list of events.
-        
-        """
-        # create the zero-object for zero analysis (step 2)
-        zero_obj = OCM.ZEROOBJ
-        graphs = []
-        for sort in range(len(set(sorts.values()))):
-            graphs.append(nx.DiGraph())
-        
-        # collect action sequences for each object
-        obj_traces_list: List[OCM.ObjectTrace] = []
-        
-        for trace in trace_list:
-            obj_traces: OCM.ObjectTrace = defaultdict(list)
-
-            for step in trace.steps:
-                action = step.action
-                if action is not None:
-                    # add the step for the zero-object
-                    zero_event = Event(action, pos=[0], sort=[0])
-                    obj_traces[zero_obj].append(zero_event)
-                    graphs[0].add_node(zero_event)
-                    # for each combination of action name A and argument pos P
-                    
-                    position_map = defaultdict(list)
-                    
-                    # there might be duplicate param in the same action
-                    for j, obj in enumerate(action.obj_params):
-                        position_map[obj.name].append(j+1)
-                    
-                    for obj_name, positions in position_map.items():
-                        sort = sorts[obj_name]
-                        event = Event(action, pos=positions, sort=sort)
-                        obj_traces[obj].append(event)
-                        graphs[sort].add_node(event)
-
-        obj_traces_list.append(obj_traces)
-
-        TM_list = []
-        for obj_trace in obj_traces_list:
-            for obj, seq in obj_trace.items():
-                sort = sorts[obj.name]
-                for i in range(0, len(seq) - 1):
-                    graphs[sort].add_edge(seq[i],seq[i+1],weight=1)
-                        
-        for sort, G in enumerate(graphs):
-            TM = nx.to_pandas_adjacency(G, nodelist=G.nodes(), dtype=int)
-            TM_list.append(TM)
-            if debug:
-                print(f"Transition matrix for sort {sort}:")
-                pprint_table(TM)
-
-        return obj_traces_list, TM_list
     
     def split_transitions(self, TM_list, obj_traces_list, sorts)-> List[pd.DataFrame]:
         TM_list_with_holes = self.find_holes(TM_list)

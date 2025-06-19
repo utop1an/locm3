@@ -15,7 +15,7 @@ class POBASELINE(OCM):
         obj_PO_matrix_list, obj_PO_trace_list = self.get_PO_matrix(po_trace_list, sorts)
         obj_consecutive_transitions_list  = self.baseline_solve_po(obj_PO_matrix_list)
         obj_traces = self.find_obj_traces(obj_consecutive_transitions_list, obj_PO_trace_list)
-        TM_list = self.get_TM_list(obj_consecutive_transitions_list, sorts)
+        TM_list = self.get_learned_TM_list(obj_consecutive_transitions_list, sorts)
         return obj_traces, TM_list
 
     def get_PO_matrix(self, PO_trace_list, sorts):
@@ -184,7 +184,7 @@ class POBASELINE(OCM):
         return possible_traces
         
 
-    def get_TM_list(self, obj_consecutive_transitions_list, sorts):
+    def get_learned_TM_list(self, obj_consecutive_transitions_list, sorts):
         
         graphs = []
         for sort in range(len(set(sorts.values()))):
