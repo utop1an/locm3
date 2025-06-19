@@ -3,8 +3,6 @@ From: ubuntu2204.sif
 Stage: build
 
 %files
-    src
-    data
     requirements.txt
     
     # copy cplex form local installation
@@ -44,9 +42,6 @@ Stage: build
     # Install Python modules.
     pip install -r requirements.txt
 
-
-    mkdir /output
-    mkdir /logs
 
 %environment
     # Set environment variables for CPLEX when the container is run
