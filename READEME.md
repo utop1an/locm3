@@ -109,6 +109,33 @@ smapling? repeat
 
 plot? distribution
 
+
+generating training data:
+n the wanted number of traces []
+m the wanted length of trace, [10, 30, 50, ... 100]
+L the length of the original trace
+lim the min length we accept 2/5/10...
+overall length ol is the sum of length of all traces in a domain 
+
+given all traces of a domain
+    for n,m:
+        repeat R times
+            sample n traces
+            for each trace:
+                cut m length from start (m<=L, drop if L<lim) trace[:m] 
+
+total length of a training item tl < n*m
+len% = tl/ol
+
+
+reduce nm
+gen invalid plans
+repeat more
+polocm1
+
+
+    
+
     
 
 
