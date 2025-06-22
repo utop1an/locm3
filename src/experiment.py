@@ -176,7 +176,9 @@ def get_acceptance_rate(learned_domain, test_data, invalid_test_suffixes):
         for problem, trace in test_data.items():
             valid_acceptance, invalid_acceptance = evaluator.get_acceptance_rate(trace, invalid_test_suffixes[problem])
             valid_res.append(valid_acceptance)
-            invalid_res.append(invalid_acceptance)
+            # Only considert invalid acceptance if the valid seq is accepted
+            if valid_acceptance == 1:
+                invalid_res.append(invalid_acceptance)
         if len(valid_res) == 0:
             valid = 0
         else:
@@ -188,40 +190,6 @@ def get_acceptance_rate(learned_domain, test_data, invalid_test_suffixes):
     except Exception as e:
         return 0,0, "Error in acceptance rate calculation" + str(e)
     return valid, invalid, None
-
-
-
-
-def experiment(cplex_dir, experiment_threads, cplex_threads, extraction_type, dod, train_data, test_data, invalid_test_suffixes):
-    log_filename = f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-    log_filepath = os.path.join("./logs", log_filename)
-    logger = setup_logger(log_filepath)
-    logger.info("Experiment Start...")
-    logger.info(f"Using {experiment_threads} threads for parallel processing.")
-
-
-
-    tasks = []
-    for item in train_data:
-        domain = item['domain']
-        tasks.append((cplex_dir,cplex_threads, extraction_type, item, dod, test_data[domain], invalid_test_suffixes[domain], logger))
-        
-        
-    
-    if DEBUG:
-        tasks = random.sample(tasks, 3)
-
-    if experiment_threads > 1:
-        logger.info("Running experiment in multiprocessing...")
-        with Pool(processes=experiment_threads, maxtasksperchild=4) as pool:
-            pool.starmap_async(run_single_experiment, tasks).get()
-     
-    else:
-        logger.info("Running experiment in sequential...")
-        for task in tasks:
-            r= run_single_experiment(*task)
-  
-    logger.info("Experiment completed.")
 
 
 def read_files(input_filepath, test_filepath, invalid_suffixes_filepath):
@@ -256,6 +224,36 @@ def read_files(input_filepath, test_filepath, invalid_suffixes_filepath):
     INVALID_TEST_SUFFIXES = invalid_suffixes
     return TRAIN_DATA, TEST_DATA, INVALID_TEST_SUFFIXES
 
+def experiment(cplex_dir, experiment_threads, cplex_threads, extraction_type, dod, train_data, test_data, invalid_test_suffixes):
+    log_filename = f"dod{dod}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_filepath = os.path.join("./logs", log_filename)
+    logger = setup_logger(log_filepath)
+    logger.info("Experiment Start...")
+    logger.info(f"Using {experiment_threads} threads for parallel processing.")
+
+
+
+    tasks = []
+    for item in train_data:
+        domain = item['domain']
+        tasks.append((cplex_dir,cplex_threads, extraction_type, item, dod, test_data[domain], invalid_test_suffixes[domain], logger))
+        
+        
+    
+    if DEBUG:
+        tasks = random.sample(tasks, 10)
+
+    if experiment_threads > 1:
+        logger.info("Running experiment in multiprocessing...")
+        with Pool(processes=experiment_threads, maxtasksperchild=1) as pool:
+            pool.starmap(run_single_experiment, tasks).get()
+     
+    else:
+        logger.info("Running experiment in sequential...")
+        for task in tasks:
+            r= run_single_experiment(*task)
+  
+    logger.info("Experiment completed.")
 
 def main(args):
     global DEBUG, OUTPUT_DIR
@@ -325,9 +323,9 @@ if __name__ == "__main__":
     parser.add_argument('--v', type=str, default="./data/plain_traces/invalid_suffixes.txt", help='Path to the (invalid) test data')
     parser.add_argument('--d', type=float, default=0.1, help='dod')
     parser.add_argument('--e', type=str, default='p2', help='Type of extraction')
-    parser.add_argument('--et', type=int, default=2, help='Number of threads for experiment')
+    parser.add_argument('--et', type=int, default=4, help='Number of threads for experiment')
     parser.add_argument("--cplex", type=str, default="/opt/cplex/cplex/bin/x86-64_linux/cplex", help="Path to cplex solver")
-    parser.add_argument('--ct', type=int, default=4, help='Number of threads for cplex')
+    parser.add_argument('--ct', type=int, default=2, help='Number of threads for cplex')
     parser.add_argument('--debug', action='store_true', help='Debug mode')
     args = parser.parse_args()
     main(args)

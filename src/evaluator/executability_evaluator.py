@@ -102,7 +102,8 @@ class ExecutabilityEvaluator:
             raise Exception("Domain not initialized")
         
         valid_acceptance = self.get_first_fail_executability('l',valid_seq, set(), set(),None, True )
-     
+        if valid_acceptance == 0:
+            return 0, 0
         if invalid_suffixes:
             invalid_acceptance = self.get_first_fail_executability('l', valid_seq, set(), set(), invalid_suffixes, True)
      

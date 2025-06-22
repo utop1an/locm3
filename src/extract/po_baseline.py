@@ -13,8 +13,8 @@ class POBASELINE(OCM):
 
     def solve_po(self, po_trace_list, sorts):
         obj_PO_matrix_list, obj_PO_trace_list = self.get_PO_matrix(po_trace_list, sorts)
-        obj_consecutive_transitions_list  = self.baseline_solve_po(obj_PO_matrix_list)
-        obj_traces = self.find_obj_traces(obj_consecutive_transitions_list, obj_PO_trace_list)
+        obj_consecutive_transitions_list, obj_traces  = self.baseline_solve_po(obj_PO_matrix_list)
+        # obj_traces = self.find_obj_traces(obj_consecutive_transitions_list, obj_PO_trace_list)
         TM_list = self.get_learned_TM_list(obj_consecutive_transitions_list, sorts)
         return obj_traces, TM_list
 
@@ -127,8 +127,20 @@ class POBASELINE(OCM):
                 obj_consecutive_transitions[obj] = unique
             obj_consecutive_transitions_list.append(obj_consecutive_transitions)
         
-        
-        return obj_consecutive_transitions_list
+        grouped_obj_traces = defaultdict(list)
+        for obj_traces in obj_consecutive_transitions_list:
+            for obj, seqs in obj_traces.items():
+                for pair in seqs:
+                    e1, e2 = pair
+                    if (e2 is None):
+                        seq = [e1.to_event()]
+                    else:
+                        seq = [e1.to_event(), e2.to_event()]
+                    grouped_obj_traces[obj].append(seq)
+
+        return obj_consecutive_transitions_list, grouped_obj_traces
+
+        # return obj_consecutive_transitions_list
     
 
     def find_obj_traces(self, obj_consecutive_transitions_list, obj_PO_trace_list):
@@ -160,7 +172,9 @@ class POBASELINE(OCM):
               
 
                 def dfs(path, visited):
-                    extended = False
+                    if len(path) == len(events_set):
+                        possible_traces[obj].append([e.to_event() for e in path])
+                        return
                     last = path[-1]
                     for nxt in graph[last]:
                         if nxt not in visited:
@@ -169,9 +183,19 @@ class POBASELINE(OCM):
                             dfs(path, visited)
                             path.pop()
                             visited.remove(nxt)
-                            extended = True
-                    if not extended: 
-                        possible_traces[obj].append([e.to_event() for e in path])
+                # def dfs(path, visited):
+                #     extended = False
+                #     last = path[-1]
+                #     for nxt in graph[last]:
+                #         if nxt not in visited:
+                #             visited.add(nxt)
+                #             path.append(nxt)
+                #             dfs(path, visited)
+                #             path.pop()
+                #             visited.remove(nxt)
+                #             extended = True
+                #     if not extended: 
+                #         possible_traces[obj].append([e.to_event() for e in path])
                 
                 for source in sources:
                     dfs([source], {source})
