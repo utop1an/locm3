@@ -1,5 +1,5 @@
 #! /bin/bash
-#SBATCH --job-name=polocm_1
+#SBATCH --job-name=polocm_2
 #SBATCH --mail-type=END,FAIL          # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=u6797221@anu.edu.au     # Where to send mail
 #SBATCH --ntasks=1

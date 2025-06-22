@@ -23,41 +23,45 @@ class POOPTIMISATION(OCM):
             print(f"launching cplex with {self.cores} cores")
             solver = pl.CPLEX_CMD(path=self.solver_path, msg=False, timeLimit=600, threads=self.cores, maxMemory=4096)
         
-        trace_PO_matrix_overall, \
-        obj_trace_PO_matrix_overall, \
-        obj_trace_FO_matrix_overall, \
-        sort_aps = self.get_matrices(PO_trace_list, sorts)
-        prob, PO_vars_overall = self.build_PO_constraints(
-            trace_PO_matrix_overall, 
-            obj_trace_PO_matrix_overall
-            )
-        
-        prob, FO_vars_overall = self.build_FO_constraints(
-            prob,
-            PO_vars_overall,
-            obj_trace_PO_matrix_overall,
-            obj_trace_FO_matrix_overall
-            )
-        prob, sort_transition_matrix, sort_AP_vars = self.build_TM_constraints(
-            prob,
-            sort_aps,
-            sorts,
-            FO_vars_overall,
-            obj_trace_FO_matrix_overall)
-        solution = self.bip_solve_PO(
-            prob,
-            solver,
-            sort_AP_vars
-            )
-        obj_traces_list, TM_list = self.get_obj_traces(
-            obj_trace_PO_matrix_overall,
-            PO_vars_overall,
-            obj_trace_FO_matrix_overall,
-            FO_vars_overall,
-            sort_transition_matrix,
-            sort_AP_vars,
-            solution
-            )
+        try: 
+            trace_PO_matrix_overall, \
+            obj_trace_PO_matrix_overall, \
+            obj_trace_FO_matrix_overall, \
+            sort_aps = self.get_matrices(PO_trace_list, sorts)
+            prob, PO_vars_overall = self.build_PO_constraints(
+                trace_PO_matrix_overall, 
+                obj_trace_PO_matrix_overall
+                )
+            
+            prob, FO_vars_overall = self.build_FO_constraints(
+                prob,
+                PO_vars_overall,
+                obj_trace_PO_matrix_overall,
+                obj_trace_FO_matrix_overall
+                )
+            prob, sort_transition_matrix, sort_AP_vars = self.build_TM_constraints(
+                prob,
+                sort_aps,
+                sorts,
+                FO_vars_overall,
+                obj_trace_FO_matrix_overall)
+            solution = self.bip_solve_PO(
+                prob,
+                solver,
+                sort_AP_vars
+                )
+            obj_traces_list, TM_list = self.get_obj_traces(
+                obj_trace_PO_matrix_overall,
+                PO_vars_overall,
+                obj_trace_FO_matrix_overall,
+                FO_vars_overall,
+                sort_transition_matrix,
+                sort_AP_vars,
+                solution
+                )
+        except Exception as e:
+            print("Exception in PO optimisation: ", e)
+            raise e
         return obj_traces_list, TM_list
 
     def get_matrices(self, PO_trace_list, sorts):
