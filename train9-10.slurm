@@ -3,8 +3,8 @@
 #SBATCH --mail-type=END,FAIL          # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=u6797221@anu.edu.au     # Where to send mail
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=24
+#SBATCH --mem=48G
 #SBATCH --time=120:00:00
 #SBATCH --partition=normal
 #SBATCH --qos=normal
@@ -23,7 +23,7 @@ for dod in 0.9 1; do
         -B ~/locm3/logs:/logs \
         -B ~/locm3/output/:/output \
         ~/locm3/polocm.sif python3 /src/experiment.py \
-        --ct 2 --et 8 \
+        --ct 2 --et 12 \
         --d $dod \
         --cplex /opt/cplex/cplex/bin/x86-64_linux/cplex \
         --e ${EVAL_TYPE}

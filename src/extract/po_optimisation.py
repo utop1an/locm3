@@ -21,7 +21,7 @@ class POOPTIMISATION(OCM):
             solver = pl.PULP_CBC_CMD(msg=False, timeLimit=600)
         else:
             print(f"launching cplex with {self.cores} cores")
-            solver = pl.CPLEX_CMD(path=self.solver_path, msg=False, timeLimit=600, threads=self.cores, maxMemory=8192)
+            solver = pl.CPLEX_CMD(path=self.solver_path, msg=False, timeLimit=600, threads=self.cores, maxMemory=4096)
         
         trace_PO_matrix_overall, \
         obj_trace_PO_matrix_overall, \
@@ -409,7 +409,7 @@ class POOPTIMISATION(OCM):
         try:
             prob.solve(solver)
         except Exception as e:
-            raise Exception("Invalid MLP task")
+            raise Exception("Invalid MLP task: "+ str(e))
         if pl.LpStatus[prob.status] != 'Optimal':
             raise Exception(f"Solver failed with status: {pl.LpStatus[prob.status]}")
         solution = {var.name: var.varValue for var in prob.variables()}
