@@ -246,7 +246,7 @@ def experiment(cplex_dir, experiment_threads, cplex_threads, extraction_type, do
     if experiment_threads > 1:
         logger.info("Running experiment in multiprocessing...")
         with Pool(processes=experiment_threads, maxtasksperchild=1) as pool:
-            pool.starmap(run_single_experiment, tasks).get()
+            pool.starmap(run_single_experiment, tasks)
      
     else:
         logger.info("Running experiment in sequential...")

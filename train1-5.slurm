@@ -4,7 +4,7 @@
 #SBATCH --mail-user=u6797221@anu.edu.au     # Where to send mail
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=48G
+#SBATCH --mem=64G
 #SBATCH --time=120:00:00
 #SBATCH --partition=normal
 #SBATCH --qos=normal
@@ -30,7 +30,7 @@ for dod in 0.1 0.2 0.3 0.4 0.5; do
 
     echo "Completed task with --d=$dod, --e=${EVAL_TYPE}"
 
-    sacct -j $SLURM_JOB_ID --format=JobID,JobName,MaxRSS,MaxVMSize,State,Elapsed >> 1_$SLURM_JOB_ID_polocm.log
+    sacct -j $SLURM_JOB_ID --format=JobID,JobName,MaxRSS,MaxVMSize,State,Elapsed >> $dod_$EVAL_TYPE_$SLURM_JOB_ID_polocm.log
 done
 
 echo "--- done ---"
