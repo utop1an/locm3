@@ -150,7 +150,7 @@ def get_AP_accuracy(TM, golden_TM):
     if (len(TM) != len(golden_TM)):
         return 0,1, "AP Invalid Length"
     acc = []
-    err = []
+    fpr = []
     for sort, m1 in enumerate(TM):
         m1 = m1.reindex(index=golden_TM[sort].index, columns=golden_TM[sort].columns) 
         m1 = np.where(m1>0, 1, 0)
@@ -158,12 +158,16 @@ def get_AP_accuracy(TM, golden_TM):
 
         m2 = np.where(golden_TM[sort]>0, 1,0)
         l2 = m2.flatten()
-        # if (DEBUG):
-        #     print(f"sort{sort}-AP array [learned]: {l1}")
-        #     print(f"sort{sort}-AP array [ground ]: {l2}")
+      
+        # print(f"sort{sort}-AP array [learned]: {l1}")
+        # print(f"sort{sort}-AP array [ground ]: {l2}")
         acc.append(sum(l1==l2)/len(l1))
-        err.append(np.sum((l2==0)& (l1==1))/len(l1)) # false positive rate?
-    return sum(acc)/len(acc), sum(err)/len(err), None
+        fpr.append(np.sum((l2==0)& (l1==1))/len(l1)) # one side error rate
+        # fp = np.sum((l2==0) & (l1==1))
+        # tn = np.sum((l2==0) & (l1==0))
+        # fpr.append(fp / (fp + tn) if (fp + tn) > 0 else 0)
+        
+    return sum(acc)/len(acc), sum(fpr)/len(fpr), None
 
 
 def get_acceptance_rate(learned_domain, test_data, invalid_test_suffixes):

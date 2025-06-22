@@ -92,11 +92,13 @@ class POBASELINE(OCM):
     
     def baseline_solve_po(self, obj_PO_matrix_list):
         obj_consecutive_transitions_list = []
+        _grouped_obj_traces = defaultdict(set)
         for trace_no, matrices, in enumerate(obj_PO_matrix_list):
             obj_consecutive_transitions: Dict[TypedObject, List[Tuple[SingletonEvent, SingletonEvent]]] = defaultdict(list)
             for obj,PO_matrix in matrices.items():
                 if (len(PO_matrix) == 1):
                     obj_consecutive_transitions[obj].append((PO_matrix.columns[0],None))
+                    _grouped_obj_traces[obj].add((PO_matrix.columns[0].to_event(),))
                 for i in range(len(PO_matrix)):
                     for j in range(len(PO_matrix)):
                         if (i==j):
@@ -113,30 +115,18 @@ class POBASELINE(OCM):
                                     break
                             if not flag:
                                 obj_consecutive_transitions[obj].append((PO_matrix.columns[i],PO_matrix.columns[j]))
+                                _grouped_obj_traces[obj].add((PO_matrix.columns[i].to_event(), PO_matrix.columns[j].to_event()))
                         else:
                             obj_consecutive_transitions[obj].append((PO_matrix.columns[i],PO_matrix.columns[j]))
+                            _grouped_obj_traces[obj].add((PO_matrix.columns[i].to_event(), PO_matrix.columns[j].to_event()))
             
-            for obj, transitions in obj_consecutive_transitions.items():
-                # Remove duplicates while preserving order
-                seen = set()
-                unique = []
-                for transition in transitions:
-                    if transition not in seen:
-                        seen.add(transition)
-                        unique.append(transition)
-                obj_consecutive_transitions[obj] = unique
             obj_consecutive_transitions_list.append(obj_consecutive_transitions)
         
         grouped_obj_traces = defaultdict(list)
-        for obj_traces in obj_consecutive_transitions_list:
-            for obj, seqs in obj_traces.items():
-                for pair in seqs:
-                    e1, e2 = pair
-                    if (e2 is None):
-                        seq = [e1.to_event()]
-                    else:
-                        seq = [e1.to_event(), e2.to_event()]
-                    grouped_obj_traces[obj].append(seq)
+        for obj, seqs in _grouped_obj_traces.items():
+            for pair in seqs:
+                grouped_obj_traces[obj].append(list(pair))
+                
 
         return obj_consecutive_transitions_list, grouped_obj_traces
 
