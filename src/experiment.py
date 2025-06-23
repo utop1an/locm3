@@ -139,6 +139,7 @@ def solve(cplex_dir,cplex_threads, extraction,po_traces ,traces, domain_name, te
             remark = ['Success']
     except Exception as e:
         print(f"Error: {e}")
+        extraction_method.terminate()
         return (0,0,0), 0,0, 0,0, e
     return runtime, accuracy_val, error_rate, acceptance_rate, invalida_acceptance_rate, " ".join(remark)
 

@@ -12,6 +12,7 @@ import pulp as pl
 from itertools import combinations
 from utils.helpers import pprint_table, check_well_formed, check_valid, complete_PO, complete_FO
 import time
+import gc
 
 class POLOCM2(POOPTIMISATION, LOCM2):
 
@@ -30,14 +31,25 @@ class POLOCM2(POOPTIMISATION, LOCM2):
         transition_sets_per_sort_list = self.split_transitions(TM_list, obj_traces_list, sorts)
         locm2_time = time.time() - start - po_time
         TS, OS, ap_state_pointers = self.get_TS_OS(obj_traces_list, transition_sets_per_sort_list, TM_list, sorts)
+        del obj_traces_list, transition_sets_per_sort_list
+        gc.collect()
         if self.state_param:
             bindings = self.get_state_bindings(TS, ap_state_pointers, OS, sorts, TM_list, debug=self.debug)
         else:
             bindings = None
+        del TS
+        gc.collect()
         model = self.get_model(OS, ap_state_pointers, sorts, bindings, None, statics=[], debug=False)
         locm_time = time.time() - start - po_time - locm2_time
         return model, TM_list, (po_time, locm2_time, locm_time)
     
+    def terminate(self):
+        try:
+            if hasattr(self, 'solver') and hasattr(self.solver, 'close'):
+                self.solver.close()
+        except Exception as e:
+            print(f"Solver termination error: {e}")
+
 
     
     

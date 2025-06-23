@@ -52,7 +52,7 @@ class IndexedEvent(Event):
         
 
     def __repr__(self):
-        return f'[{self.index}]{self.action.name}.{self.pos}'
+        return f'[{self.index}]{self.action.name}{"."+str(self.pos) if self.pos is not None else ""}'
             
     def __hash__(self):
         return hash((self.action.name, self.index, self.pos))    

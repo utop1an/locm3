@@ -8,6 +8,8 @@ import numpy as np
 import networkx as nx
 import pulp as pl
 from utils.helpers import pprint_table, complete_PO_np, complete_FO_np
+from datetime import datetime
+from pympler import asizeof
 
 class POOPTIMISATION(OCM):
 
@@ -18,10 +20,10 @@ class POOPTIMISATION(OCM):
 
     def solve_po(self, PO_trace_list, sorts):
         if self.solver_path == 'default':
-            solver = pl.PULP_CBC_CMD(msg=False, timeLimit=600)
+            self.solver = pl.PULP_CBC_CMD(msg=False, timeLimit=600)
         else:
-            print(f"launching cplex with {self.cores} cores")
-            solver = pl.CPLEX_CMD(path=self.solver_path, msg=False, timeLimit=600, threads=self.cores, maxMemory=4096)
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Launching CPLEX with {self.cores} cores")
+            self.solver = pl.CPLEX_CMD(path=self.solver_path, msg=False, timeLimit=600, threads=self.cores, maxMemory=4096)
         
         try: 
             trace_PO_matrix_overall, \
@@ -47,7 +49,6 @@ class POOPTIMISATION(OCM):
                 obj_trace_FO_matrix_overall)
             solution = self.bip_solve_PO(
                 prob,
-                solver,
                 sort_AP_vars
                 )
             obj_traces_list, TM_list = self.get_obj_traces(
@@ -181,12 +182,12 @@ class POOPTIMISATION(OCM):
             for i in range(matrix.shape[0]):
                 for j in range(i+1, matrix.shape[1]):
                     if pd.isna(matrix[i,j]) or matrix[i,j] == np.nan:
-                        var_name = f"t_{trace_no}_{repr(ias[i])}_{repr(ias[j])}"
+                        var_name = f"t{trace_no}_{i}_{j}"
                         var = pl.LpVariable(var_name, cat=pl.LpBinary, upBound=1, lowBound=0) 
                         PO_vars[(ias[i], ias[j])] = var 
                         matrix[i,j] = (ias[i], ias[j])
 
-                        transpose_var_name = f"t_{trace_no}_{repr(ias[j])}_{repr(ias[i])}"
+                        transpose_var_name = f"tr{trace_no}_{i}_{j}"
                         transpose_var = pl.LpVariable(transpose_var_name, cat=pl.LpBinary, upBound=1, lowBound=0) 
                         PO_vars[(ias[j], ias[i])] = transpose_var 
                         matrix[j,i] = (ias[j], ias[i])
@@ -274,7 +275,7 @@ class POOPTIMISATION(OCM):
                             continue
                         current_PO = PO_vars_overall[trace_no].get(PO_matrix[i,j],PO_matrix[i,j])
                         if (pd.isna(FO_matrix[i,j])):
-                            var_name = f"FO_{trace_no}_{str(obj.name)}{repr(iaps[i])}{repr(iaps[j])}"
+                            var_name = f"f{trace_no}_{str(obj.name)}_{i}_{j}"
                             var = pl.LpVariable(var_name, cat=pl.LpBinary, upBound=1, lowBound=0) 
                             FO_vars[obj][(iaps[i], iaps[j])] = var 
                             FO_matrix[i,j] = (iaps[i], iaps[j])
@@ -394,7 +395,7 @@ class POOPTIMISATION(OCM):
                     candidates = _sort_transition_matrix[sort][1][i, j]
                     if (isinstance(candidates, set)):
                         if (len(candidates)>0):
-                            var_name = f"AP_ {repr(aps[i])}_ {repr(aps[j])}"
+                            var_name = f"e_{sort}_{i}_{j}"
                             var = pl.LpVariable(var_name, cat=pl.LpBinary, upBound=1, lowBound=0) 
                             sort_AP_vars[sort][(aps[i], aps[j])] = var
                             matrix[i, j] = (aps[i], aps[j])
@@ -421,17 +422,26 @@ class POOPTIMISATION(OCM):
         return prob, sort_transition_matrix, sort_AP_vars
 
     def bip_solve_PO(self, prob,
-        solver,
         sort_AP_vars,):
         prob += pl.lpSum(var for var_list in sort_AP_vars.values() for var in var_list.values())
 
+        max_allowed_size_bytes = 4 * 1024**3  # 4GB = 4294967296 bytes
+        
+
+        pympler_size = asizeof.asizeof(prob.variables()) + asizeof.asizeof(prob.constraints)
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Estimated problem size: {pympler_size / (1024 ** 2):.2f} MB")
+        if pympler_size > max_allowed_size_bytes:
+            raise MemoryError("Problem too large")
+        
         try:
-            prob.solve(solver)
+
+            prob.solve(self.solver)
         except Exception as e:
             raise Exception("Invalid MLP task: "+ str(e))
         if pl.LpStatus[prob.status] != 'Optimal':
             raise Exception(f"Solver failed with status: {pl.LpStatus[prob.status]}")
         solution = {var.name: var.varValue for var in prob.variables()}
+        
         if self.debug['bip_solve_PO']:
 
             print("Status: ", pl.LpStatus[prob.status])
