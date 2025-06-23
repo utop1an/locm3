@@ -1,5 +1,5 @@
 
-from extract import POLOCM2, POLOCM, POLOCM2BASELINE, POLOCMBASELINE, LOCM2
+from extract import POLOCM2, POLOCM, POLOCM2BASELINE, POLOCMBASELINE
 from evaluator import ExecutabilityEvaluator
 import numpy as np
 from utils import set_timer_throw_exc, GeneralTimeOut, read_plan, read_json_file
@@ -48,7 +48,7 @@ def run_single_experiment(cplex_dir,cplex_threads, extraction_type, learning_obj
         'p2': POLOCM2,
         'p': POLOCM,
         'p2b': POLOCM2BASELINE,
-        'pb': POLOCMBASELINE
+        'pb': POLOCMBASELINE,
     }
     extraction = extractions[extraction_type]
 
@@ -57,7 +57,6 @@ def run_single_experiment(cplex_dir,cplex_threads, extraction_type, learning_obj
         index_by_dod = int(dod* 10 -1)
         po_traces = all_po_traces[index_by_dod]
         actual_dod = sum([poat.flex for poat in po_traces]) / len(po_traces)
-
         runtime, accuracy_val, error_rate,acceptance_rate , invalid_acceptance_rate, remark = solve(
             cplex_dir,
             cplex_threads, 
@@ -151,12 +150,23 @@ def get_AP_accuracy(TM, golden_TM):
         return 0,1, "AP Invalid Length"
     acc = []
     fpr = []
+
+    def get_golden_TM(TM_cols):
+        for golden_tm in golden_TM:
+            if set(golden_tm.columns) == TM_cols:
+                return golden_tm
+        return None
     for sort, m1 in enumerate(TM):
-        m1 = m1.reindex(index=golden_TM[sort].index, columns=golden_TM[sort].columns) 
+        m1_cols = set(m1.columns)
+        golden_tm = get_golden_TM(m1_cols)
+        assert golden_tm is not None, f"Golden TM for sort {sort}: {m1_cols} not found in golden_TM"
+        
+        m1 = m1.reindex(index=golden_tm.index, columns=golden_tm.columns) 
         m1 = np.where(m1>0, 1, 0)
+        
         l1 = m1.flatten()
 
-        m2 = np.where(golden_TM[sort]>0, 1,0)
+        m2 = np.where(golden_tm>0, 1,0)
         l2 = m2.flatten()
       
         # print(f"sort{sort}-AP array [learned]: {l1}")

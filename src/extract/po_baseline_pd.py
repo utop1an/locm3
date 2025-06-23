@@ -219,7 +219,7 @@ class POBASELINE(OCM):
                     if not iap2:
                         continue
                     if (graphs[sort].has_edge(iap1.to_event(), iap2.to_event())):
-                        graphs[sort][iap1.to_event()][iap2.to_event()]['weight']=1
+                        graphs[sort][iap1.to_event()][iap2.to_event()]['weight']+=1
                     else:
                         graphs[sort].add_edge(iap1.to_event(),iap2.to_event(),weight=1)
         
@@ -227,7 +227,7 @@ class POBASELINE(OCM):
         for index, G in enumerate(graphs):
             df = nx.to_pandas_adjacency(G, nodelist=G.nodes(), dtype=int)
             TM_list.append(df)
-            if self.debug['get_obj_trace']:
+            if self.debug['get_obj_traces']:
                 print("Sort.{} AML:".format(index))
                 pprint_table(df)
 

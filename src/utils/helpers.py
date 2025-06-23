@@ -55,23 +55,27 @@ def check_valid(subset_df, example_sequences):
 
 
 def complete_PO(PO_matrix):
-    for i in range(len(PO_matrix)):
-        for j in range(len(PO_matrix)):
-            if i==j:
-                continue
-            current = PO_matrix.iloc[i,j]
-            if (not pd.isna(current) and current == 1):
+    changed = True
+    while changed:
+        changed = False
+        for i in range(len(PO_matrix)):
+            for j in range(len(PO_matrix)):
+                if i==j:
+                    continue
+                current = PO_matrix.iloc[i,j]
+                if (not pd.isna(current) and current == 1):
 
-                # complete matrix based on transitivity of PO
-                # if a>b, b>c, then a>c
-                for x in range(len(PO_matrix)):
-                    if x==i or x ==j:
-                        continue
+                    # complete matrix based on transitivity of PO
+                    # if a>b, b>c, then a>c
+                    for x in range(len(PO_matrix)):
+                        if x==i or x ==j:
+                            continue
 
-                    next = PO_matrix.iloc[j,x]
-                    if (next == 1):
-                        PO_matrix.iloc[i,x] = 1
-                        PO_matrix.iloc[x,i] = 0
+                        next = PO_matrix.iloc[j,x]
+                        if (next == 1 and PO_matrix.iloc[i,x] != 1):
+                            PO_matrix.iloc[i,x] = 1
+                            PO_matrix.iloc[x,i] = 0
+                            changed = True
 
 def complete_FO(FO_matrix, PO_matrix):
     for i in range(len(PO_matrix)):
@@ -106,3 +110,66 @@ def complete_FO(FO_matrix, PO_matrix):
                 # FO_ij should be 0
                 elif flag == 0:
                     FO_matrix.iloc[i,j]=0
+
+def complete_PO_np(PO_matrix):
+    n = PO_matrix.shape[0]
+    changed = True
+    while changed:
+        changed = False
+        for i in range(n):
+            for j in range(n):
+                if i == j or PO_matrix[i, j] != 1:
+                    continue
+            
+                    # complete matrix based on transitivity of PO
+                    # if a>b, b>c, then a>c
+                for x in range(n):
+                    if x==i or x ==j:
+                        continue
+
+                    if PO_matrix[j, x] == 1 and PO_matrix[i, x] != 1:
+                        PO_matrix[i, x] = 1
+                        PO_matrix[x, i] = 0
+                        changed = True
+
+def complete_FO_np(FO_matrix, PO_matrix):
+    n = PO_matrix.shape[0]
+    for i in range(n):
+        for j in range(n):
+            if i==j:
+                continue
+            current_PO = PO_matrix[i,j]
+            if current_PO == 0:
+                FO_matrix[i,j] = 0
+                continue
+            if current_PO != 1:
+                continue
+            flag=1
+            for x in range(n):
+                if x == i or x == j:
+                    continue
+             
+                ix = PO_matrix[i,x]
+                xj = PO_matrix[x,j]
+                if ix==1 and xj==1:
+                    flag=0
+                    break
+                elif ix != ix or xj != xj:  # test for np.nan
+                    flag = 2  # unsure
+                # not sure
+                if (pd.isna(ix) or pd.isna(xj)):
+                    flag =2
+                # FO_ij should be 0
+                
+            # No change, FO_ij should be 1
+            if flag==1:
+                FO_matrix[i,j]=1
+                FO_matrix[j,i] = 0
+                # check nans
+                for y in range(n):
+                    if y!=i and y!=j:
+                        FO_matrix[i,y] = 0
+                        FO_matrix[y,j] = 0
+            # FO_ij should be 0
+            elif flag == 0:
+                FO_matrix[i,j]=0
