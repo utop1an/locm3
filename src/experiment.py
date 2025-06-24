@@ -246,11 +246,22 @@ def experiment(cplex_dir, experiment_threads, cplex_threads, extraction_type, do
     logger.info("Experiment Start...")
     logger.info(f"Using {experiment_threads} threads for parallel processing.")
 
+    missing = {
+        0.6: [586, 587],
+        0.7: [881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895],
+        0.8: [876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895],
+        0.9: [578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895],
+        1.0: [586, 587],
+    }
 
 
     tasks = []
     for item in train_data:
+        if missing:
+            if item['id'] not in missing[dod]:
+                continue
         domain = item['domain']
+        print(f"adding task domain: {domain}, id: {item['id']}, dod: {dod}")
         tasks.append((cplex_dir,cplex_threads, extraction_type, item, dod, test_data[domain], invalid_test_suffixes[domain], logger))
         
         
