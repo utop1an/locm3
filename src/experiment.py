@@ -247,8 +247,7 @@ def experiment(cplex_dir, experiment_threads, cplex_threads, extraction_type, do
     logger.info(f"Using {experiment_threads} threads for parallel processing.")
 
     missing = {
-        0.7: [881, 884, 887],
-        0.8: [879, 880, 881, 882, 884, 887, 888],
+        0.8: [880, 882, 884],
         0.9: [578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895],
     }
 
