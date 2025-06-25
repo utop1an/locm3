@@ -1332,3 +1332,5 @@ id,dod,actual_dod,domain,index,total_length,len%,runtime,polocm_time,locm2_time,
 1313,1.0,1.0,transport,8,79,0.01830398517145505,600,600,0,0,0,0,0,0,Timeout
 1314,1.0,1.0,transport,9,83,0.019230769230769232,600,600,0,0,0,0,0,0,Timeout
 1315,1.0,1.0,transport,0,151,0.03498609823911029,600,600,0,0,0,0,0,0,Timeout
+586,1.0,1.0,floortile,5,876,0.10489761705185008,600,600,0,0,0,0,0,0,Timeout
+587,1.0,1.0,floortile,6,855,0.10238294814992216,600,600,0,0,0,0,0,0,Timeout
