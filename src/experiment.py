@@ -256,9 +256,7 @@ def experiment(cplex_dir, experiment_threads, cplex_threads, extraction_type, do
     logger.info("Experiment Start...")
     logger.info(f"Using {experiment_threads} threads for parallel processing.")
 
-    missing = {
-        0.9: [581, 582, 584, 585, 586, 587, 881, 882, 884, 885, 887, 888],
-    }
+    missing = None
 
 
     tasks = []
