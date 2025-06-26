@@ -57,7 +57,7 @@ def run_single_experiment(cplex_dir,cplex_threads, extraction_type, learning_obj
         index_by_dod = int(dod* 10 -1)
         po_traces = all_po_traces[index_by_dod]
         actual_dod = sum([poat.flex for poat in po_traces]) / len(po_traces)
-        runtime, accuracy_val, error_rate,acceptance_rate , invalid_acceptance_rate, remark = solve(
+        runtime,tps, fps, tns, fns,acceptance_rate , invalid_acceptance_rate, remark = solve(
             cplex_dir,
             cplex_threads, 
             extraction,
@@ -70,9 +70,9 @@ def run_single_experiment(cplex_dir,cplex_threads, extraction_type, learning_obj
 
 
     except GeneralTimeOut as t:
-        runtime, accuracy_val, error_rate,acceptance_rate , invalid_acceptance_rate, remark = (600,0,0), 0,0,0, 0, f"Timeout"
+        runtime, tps, fps, tns, fns,acceptance_rate , invalid_acceptance_rate, remark = (600,0,0), 0,0,0,0,0, 0, f"Timeout"
     except Exception as e:
-        runtime, accuracy_val, error_rate,acceptance_rate , invalid_acceptance_rate, remark = (0, 0, 0), 0, 0, 0, 0, e
+        runtime, tps, fps, tns, fns,acceptance_rate , invalid_acceptance_rate, remark = (0, 0, 0), 0,0,0, 0, 0, 0, e
         logger.error(f"Error during experiment for domain {domain}: {e}")
 
     polocm_time, locm2_time, locm_time = runtime
@@ -90,8 +90,10 @@ def run_single_experiment(cplex_dir,cplex_threads, extraction_type, learning_obj
         'polocm_time': polocm_time,
         'locm2_time': locm2_time,
         'locm_time': locm_time,
-        'accuracy': accuracy_val,
-        'error_rate': error_rate,
+        'tp': tps,
+        'fp': fps,
+        'tn': tns,
+        'fn': fns,
         'acceptance_rate': acceptance_rate,
         'invalid_acceptance_rate': invalid_acceptance_rate,  # Placeholder for invalid acceptance rate
         'remark': remark
@@ -128,7 +130,7 @@ def solve(cplex_dir,cplex_threads, extraction,po_traces ,traces, domain_name, te
         pddl_model = model.to_pddl_domain(domain_name)
         golden_TM = extraction_method.get_TM_list(traces)
     
-        accuracy_val,error_rate, r = get_AP_accuracy(TM, golden_TM)
+        tps, fps, tns, fns, r = get_AP_accuracy(TM, golden_TM)
         if r:
             remark.append(r)
         acceptance_rate, invalida_acceptance_rate, r = get_acceptance_rate(pddl_model, test_data, invalid_test_suffixes)
@@ -137,11 +139,15 @@ def solve(cplex_dir,cplex_threads, extraction,po_traces ,traces, domain_name, te
 
         if len(remark)==0:
             remark = ['Success']
+    except MemoryError as me:
+        print(f"MemoryError: {me}. Terminating extraction method.")
+        extraction_method.terminate()
+        return (600,0,0), 0,0,0,0,0, 0, f"Memout"
     except Exception as e:
         print(f"Error: {e}")
         extraction_method.terminate()
-        return (0,0,0), 0,0, 0,0, e
-    return runtime, accuracy_val, error_rate, acceptance_rate, invalida_acceptance_rate, " ".join(remark)
+        return (0,0,0), 0,0, 0,0,0,0, e
+    return runtime, tps, fps, tns, fns, acceptance_rate, invalida_acceptance_rate, " ".join(remark)
 
 
 def get_AP_accuracy(TM, golden_TM):
@@ -149,8 +155,10 @@ def get_AP_accuracy(TM, golden_TM):
         return 0,1, "AP Empty"
     if (len(TM) != len(golden_TM)):
         return 0,1, "AP Invalid Length"
-    acc = []
-    fpr = []
+    tps = 0
+    fps = 0
+    fns = 0
+    tns = 0
 
     def get_golden_TM(TM_cols):
         for golden_tm in golden_TM:
@@ -172,13 +180,15 @@ def get_AP_accuracy(TM, golden_TM):
       
         # print(f"sort{sort}-AP array [learned]: {l1}")
         # print(f"sort{sort}-AP array [ground ]: {l2}")
-        acc.append(sum(l1==l2)/len(l1))
-        fpr.append(np.sum((l2==0)& (l1==1))/len(l1)) # one side error rate
-        # fp = np.sum((l2==0) & (l1==1))
-        # tn = np.sum((l2==0) & (l1==0))
-        # fpr.append(fp / (fp + tn) if (fp + tn) > 0 else 0)
+        # acc.append(sum(l1==l2)/len(l1))
+        # fpr.append(np.sum((l2==0)& (l1==1))/len(l1)) # one side error rate
+        tps+= np.sum((l1 == 1) & (l2 == 1))
+        fps += np.sum((l1 == 1) & (l2 == 0))
         
-    return sum(acc)/len(acc), sum(fpr)/len(fpr), None
+        tns += np.sum((l1 == 0) & (l2 == 0))
+        fns+= np.sum((l1 == 0) & (l2 == 1))
+        
+    return tps, fps, tns, fns, None
 
 
 def get_acceptance_rate(learned_domain, test_data, invalid_test_suffixes):

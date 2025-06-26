@@ -10,7 +10,7 @@ import pulp as pl
 from utils.helpers import pprint_table, complete_PO_np, complete_FO_np
 from datetime import datetime
 
-# from pympler import asizeof
+from pympler import asizeof
 
 class POOPTIMISATION(OCM):
 
@@ -426,12 +426,12 @@ class POOPTIMISATION(OCM):
         sort_AP_vars,):
         prob += pl.lpSum(var for var_list in sort_AP_vars.values() for var in var_list.values())
 
-        # max_allowed_size_bytes = int(3.2* 1024**3)  # 3.2< 4
+        max_allowed_size_bytes = int(3.2* 1024**3)  # 3.2< 4
         
-        # pympler_size = asizeof.asizeof(prob.variables()) + asizeof.asizeof(prob.constraints)
-        # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Estimated problem size: {pympler_size / (1024 ** 2):.2f} MB")
-        # if pympler_size > max_allowed_size_bytes:
-        #     raise MemoryError("Problem too large")
+        pympler_size = asizeof.asizeof(prob.variables()) + asizeof.asizeof(prob.constraints)
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Estimated problem size: {pympler_size / (1024 ** 2):.2f} MB")
+        if pympler_size > max_allowed_size_bytes:
+            raise MemoryError("Problem too large")
         
         try:
 

@@ -87,13 +87,13 @@ class OCM(ABC):
 
         return grouped_obj_traces, TM_list
     
-    def get_TM_list(self, trace_list, types=None):
-        sorts, _ = self._get_sorts(trace_list, types)
+    def get_TM_list(self, trace_list, identify_type=False):
+        sorts, _ = self._get_sorts(trace_list, identify_type)
         _, TM_list = self.trace_to_obj_trace(trace_list, sorts)
         return TM_list
     
     @staticmethod
-    def _get_sorts(trace_list, type_dict) -> tuple:
+    def _get_sorts(trace_list, identify_type=False) -> tuple:
         """Get the sorts of objects from the traces. If sorts is not given, use it.
 
         :param trace_list: List of traces to extract sorts from.
@@ -102,8 +102,24 @@ class OCM(ABC):
         :return: Dictionary of sorts, and a dictionary of sort to type mapping.
         """
         sort_to_type_dict  = {}
-        if type_dict is not None:
-           raise NotImplementedError("Predefined type is not implemented yet.")
+        
+        
+        if identify_type:
+            sorts = []
+            obj_sorts = {}
+            for obs_trace in trace_list:
+                for step in obs_trace.steps:
+                    action = step.action
+                    if action is None:
+                        continue
+                    for i,obj in enumerate(action.obj_params):
+                        t = obj.type_name
+                        if t not in sorts:
+                            sorts.append(t)
+                        obj_sorts[obj.name] = sorts.index(t) + 1  # 1-indexed sort
+            obj_sorts['zero'] = 0  # zero-object sort
+            return obj_sorts, sort_to_type_dict
+        
         s = defaultdict(set)
         for obs_trace in trace_list:
             for step in obs_trace.steps:
