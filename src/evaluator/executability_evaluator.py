@@ -102,6 +102,7 @@ class ExecutabilityEvaluator:
             raise Exception("Domain not initialized")
         
         valid_acceptance = self.get_first_fail_executability('l',valid_seq, set(), set(),None, True )
+        print("valid acceptance:", valid_acceptance)
         if valid_acceptance == 0:
             return 0, 0
         if invalid_suffixes:
@@ -437,6 +438,7 @@ class ExecutabilityEvaluator:
                 a = a.action
             action = domain.get_action(a.name)
             if not action:
+                print("no action found for", a.name)
                 if binary:
                     return 0
                 else:
@@ -463,6 +465,7 @@ class ExecutabilityEvaluator:
 
             # not applicable
             if(len(invalid)>0):
+                
                 if self.debug:
                     print(f"action {op} not executable")
                     print("preconditions not satisfied: ", invalid)
@@ -484,7 +487,6 @@ class ExecutabilityEvaluator:
 
         if not suffixes:
             return (i+1)/len(action_sequence)
-        
         suffixes_res = []
         
         for suffix in suffixes:

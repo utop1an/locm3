@@ -29,6 +29,9 @@ class OCM(ABC):
     def extract_model(self):
         pass
 
+
+    
+
     def trace_to_obj_trace(self, trace_list, sorts, debug=False):
         """
         Convert a list of traces to a list of object traces.
@@ -86,6 +89,7 @@ class OCM(ABC):
                 grouped_obj_traces[obj].append(seq)
 
         return grouped_obj_traces, TM_list
+
     
     def get_TM_list(self, trace_list, identify_type=False):
         sorts, _ = self._get_sorts(trace_list, identify_type)

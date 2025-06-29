@@ -1,6 +1,7 @@
 from .ocm import OCM
 from .locm import LOCM
 from .locm2 import LOCM2
+from .locm3 import LOCM3
 
 from .polocm import POLOCM
 from .polocm_baseline import POLOCMBASELINE

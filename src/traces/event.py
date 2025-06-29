@@ -1,11 +1,11 @@
 from pddl.actions import ActionSignature
-from typing import List
+from typing import List, Tuple
 
 def to_tuple(x):
     return tuple(x) if isinstance(x, (list, tuple)) else (x,)
 
 class Event:
-    def __init__(self, action: ActionSignature, pos: List[int], sort: int = None):
+    def __init__(self, action: ActionSignature, pos: Tuple[int], sort: Tuple[int]):
         self.action = action
         self.pos = pos
         self.sort = sort
@@ -13,7 +13,7 @@ class Event:
     def __repr__(self):
         return f'{self.action.name}.({" ".join(str(p) for p in self.pos)})'
     def __hash__(self):
-        return hash((self.action.name, to_tuple(self.pos)))
+        return hash((self.action.name, self.pos))
 
     def __eq__(self, other):
         return (
