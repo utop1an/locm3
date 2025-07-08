@@ -3,7 +3,6 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import argparse
 import logging
-import multiprocessing
 from planner import RandomPlanner
 
 
@@ -35,7 +34,7 @@ def parse_plan_file(file, planner):
     return plan
 
 
-def process_domain(domain, solution_dir, task_dir, trace_length, num_traces, rdPlannerTimeout, max_objects):
+def process_domain(domain, solution_dir, task_dir):
     logging.info(f"Generating traces for domain: {domain}")
     domain_filepath = os.path.join(task_dir, domain, "domain.pddl")
 
@@ -52,26 +51,26 @@ def process_domain(domain, solution_dir, task_dir, trace_length, num_traces, rdP
         if not os.path.exists(task_filepath):
             continue
 
-        planner = RandomPlanner(domain_filepath, task_filepath, trace_len=trace_length, num_traces=num_traces, max_time=rdPlannerTimeout)
+        planner = RandomPlanner(domain_filepath, task_filepath)
         number_of_objects = len(planner.task.objects)
-        if max_objects is not None and number_of_objects > max_objects:
-            continue
 
         plan = generate_trace(plan_filepath, planner)
-        plan_data = f"{domain}&&{'plan'}&&{task_file}&&{'easy'}&&{number_of_objects}&&{len(plan)}&&{','.join(plan)}\n"
+        plan_data = f"{domain}&&{task_file}&&{number_of_objects}&&{len(plan)}&&{','.join(plan)}\n"
         output_data.append(plan_data)
         
 
     logging.info(f"{domain} done...")
     return output_data
 
+def write_output(output_file, results):
+    with open(output_file, 'a', buffering=1) as file:  # Line buffered
+        for result in results:
+            for line in result:
+                file.write(line)
+
 def main(args):
     input_path = args.i
     output_path = args.o
-    trace_length = args.l
-    rdPlannerTimeout = args.t
-    num_traces = args.n
-    max_objects = args.m
 
     logging.basicConfig(level=logging.INFO)
     logging.info(f"Generating traces from raw plans in {input_path}")
@@ -88,24 +87,15 @@ def main(args):
 
     output_file = os.path.join(output_path, "plain_traces.txt")
 
-    # Use multiprocessing Pool to parallelize domain processing
-    with multiprocessing.Pool(processes=8) as pool:
-        # Collect all domains first
-        domains = [domain for domain in os.listdir(solution_dir) if os.path.isdir(os.path.join(solution_dir, domain))]
-        
-        # Map each domain to the process_domain function
-        results = pool.starmap(
-            process_domain,
-            [(domain, solution_dir, task_dir, trace_length, num_traces, rdPlannerTimeout, max_objects) for domain in domains],
-            chunksize=1
-        )
+    domains = [domain for domain in os.listdir(solution_dir) if os.path.isdir(os.path.join(solution_dir, domain))]
+    for domain in domains:
+        logging.info(f"Processing domain: {domain}")
+        res = process_domain(domain, solution_dir, task_dir)
+        write_output(output_file,res)
 
     logging.info(f"Writting traces to {output_file}")
     # Write the results to the output file
-    with open(output_file, 'w', buffering=1) as file:  # Line buffered
-        for result in results:
-            for line in result:
-                file.write(line)
+    
 
     
     logging.info(f"Done!")
@@ -114,10 +104,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Parse plain traces from raw plans and generate random traces")
     parser.add_argument("--i", type=str, default="./data/goose-benchmarks", help="Directory containing raw plans and task pddls")
     parser.add_argument("--o", type=str, default="./data/plain_traces", help="Output file path")
-    parser.add_argument("--l", type=int, default=50, help="Length of the random traces")
-    parser.add_argument("--t", type=int, default=30, help="Timeout for random planner generating traces per task in seconds")
-    parser.add_argument("--n", type=int, default=0, help="Number of random traces per task")
-    parser.add_argument("--m", type=int, default=None, help="Maximum number of objects in the tasks")
     args = parser.parse_args()
     main(args)
 

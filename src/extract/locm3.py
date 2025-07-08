@@ -35,8 +35,6 @@ class LOCM3(OCM):
         self.event_arity = event_arity
 
 
-    
-
     def extract_model(self, trace_list: List[Trace], types: Dict = None):
         sorts, _ = self._get_sorts(trace_list, types)
         obj_trace_list, TM_list = self.trace_to_obj_trace(trace_list, sorts)
@@ -167,6 +165,7 @@ class LOCM3(OCM):
 
         for sort_tuple, OSM_by_event in OSM_dict.items():
             for osm in OSM_by_event:
+                # TODO if e->e is allowed
                 event = osm.event
                 if event.action.name not in actions:
                     
@@ -194,8 +193,9 @@ class LOCM3(OCM):
                     f0, f1 = fluents[event]
 
                 action.update_precond(f0)
-                action.update_add(f1)
                 action.update_delete(f0)
+                    
+                action.update_add(f1)
 
                 for event_after in osm.del_events:
                     if event_after.action.name not in actions:
@@ -233,54 +233,6 @@ class LOCM3(OCM):
         types = OCM._sorts_to_types(sorts, None)
         model = LearnedModel(fluents, actions, types)
         return model
-    
-    # osm has one state
-    # def get_model(self, OSM_dict: Dict[Tuple[int],List[OSM]], sorts: Dict):
-    #     actions = {}
-    #     fluents = set()
-
-    #     for sort_tuple, OSM_by_event in OSM_dict.items():
-    #         for osm in OSM_by_event:
-    #             event = osm.event
-    #             if event.action.name not in actions:
-    #                 action = LearnedAction(event.action, [sorts[obj] for obj in event.action.obj_params])
-    #             else:
-    #                 action = actions[event.action.name]
-
-    #             fluent = LearnedLiftedFluent(
-    #                 f"m{event.action.name}.{event.position}.1",
-    #                 [sorts[obj] for i,obj in enumerate(event.action.obj_params) if i in event.position ],
-    #                 [pos for pos in event.position],
-    #             )
-    #             # f0 = LearnedLiftedFluent(
-    #             #     f"m{event.action.name}.{event.position}.0",
-    #             #     [sorts[obj] for i,obj in enumerate(event.action.obj_params) if i in event.position ],
-    #             #     [pos for pos in event.position],
-    #             # )
-    #             fluents.add(fluent)
-    #             # fluents.add(f0)
-
-                
-    #             action.update_precond(f0)
-    #             action.update_add(f1)
-    #             action.update_delete(f0)
-
-    #             for event_after in osm.del_events:
-    #                 if event_after.action.name not in actions:
-    #                     action_after = LearnedAction(event_after.action, [sorts[obj] for obj in event_after.action.obj_params])
-    #                 else:
-    #                     action_after = actions[event_after.action.name]
-                    
-    #                 action_after.update_precond(f1)
-    #                 action_after.update_add(f0)
-    #                 action_after.update_delete(f1)
-        
-
-    #     actions = set(actions.values())
-    #     types = OCM._sorts_to_types(sorts, None)
-    #     model = LearnedModel(fluents, actions, types)
-    #     return model
-
                 
 
 
