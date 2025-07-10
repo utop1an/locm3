@@ -100,7 +100,7 @@ class LOCM3(OCM):
         for sort_tuple, TM in TM_dict.items():
             OSM_by_event = []
             for event, row in TM.iterrows():
-                ceA, self_included = self.get_ceA(TM, event)
+                ceA, self_included = self.get_ceA(row, event)
                 # TODO: check if an even has no consecutive events after it and ban such an OSM?
                 
                 if not ceA:
@@ -135,13 +135,13 @@ class LOCM3(OCM):
         """
         ceA = set()
         self_included = False
-        for i, row in TM.iterrows():
-            for j, val in row.items():
-                if val == 1:
-                    if j == event:
-                        self_included = True
-                    else:
-                        ceA.add(j)
+        
+        for j, val in TM.items():
+            if val == 1:
+                if j == event:
+                    self_included = True
+                else:
+                    ceA.add(j)
         return ceA, self_included
     
 
@@ -152,6 +152,7 @@ class LOCM3(OCM):
         for sort_tuple, OSM_by_event in OSM_dict.items():
             for osm in OSM_by_event:
                 osm.draw()
+                
     # osm has one state
     def get_model(self, OSM_dict: Dict[Tuple[int],List[OSM]], sorts: Dict, sort_to_type_dict: Dict[int, str] = None) -> LearnedModel:
         actions = {}
@@ -165,7 +166,7 @@ class LOCM3(OCM):
 
         for sort_tuple, OSM_by_event in OSM_dict.items():
             for osm in OSM_by_event:
-                # TODO if e->e is allowed
+                
                 event = osm.event
                 if event.action.name not in actions:
                     
@@ -191,11 +192,12 @@ class LOCM3(OCM):
                     fluents[event] = (f0, f1)
                 else:
                     f0, f1 = fluents[event]
-
-                action.update_precond(f0)
+                # TODO if e->e is allowed
+                if not osm.self_included:
+                    action.update_precond(f0)
                 action.update_delete(f0)
-                    
                 action.update_add(f1)
+            
 
                 for event_after in osm.del_events:
                     if event_after.action.name not in actions:
@@ -222,7 +224,7 @@ class LOCM3(OCM):
                     else:
                         _f0, _f1 = fluents[event_after]
                     
-                    action_after.update_precond(_f1)
+                    # action_after.update_precond(_f1)
                     action_after.update_add(_f0)
                     action_after.update_delete(_f1)
         
