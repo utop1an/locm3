@@ -31,8 +31,7 @@ class LOCM3(OCM):
     ObjectTrace= Dict[Tuple[TypedObject], List[Event]] 
 
     def __init__(self, event_arity=1,timeout:int=600, viz=False, debug: Dict[str, bool]=None):
-        super().__init__(timeout=timeout, debug=debug, viz=viz)
-        self.event_arity = event_arity
+        super().__init__(event_arity=event_arity, timeout=timeout, debug=debug, viz=viz)
 
 
     def extract_model(self, trace_list: List[Trace], types: Dict = None):
@@ -43,57 +42,62 @@ class LOCM3(OCM):
 
         return model
     
-    def trace_to_obj_trace(self, trace_list, sorts, debug=False):
-        """
-        Convert a list of traces to a list of object traces.
-        Each object trace is a dictionary mapping each object to a list of events.
+    # def trace_to_obj_trace(self, trace_list, sorts, debug=False):
+    #     """
+    #     Convert a list of traces to a list of object traces.
+    #     Each object trace is a dictionary mapping each object to a list of events.
         
-        """
-        # create the zero-object for zero analysis (step 2)
-        zero_obj = OCM.ZEROOBJ
-        graphs = defaultdict(lambda: nx.DiGraph())
+    #     """
+    #     # create the zero-object for zero analysis (step 2)
+    #     zero_obj = OCM.ZEROOBJ
+    #     graphs = defaultdict(lambda: nx.DiGraph())
         
         
-        # collect action sequences for each object
-        obj_traces_list: List[OCM.ObjectTrace] = []
+    #     # collect action sequences for each object
+    #     obj_traces_list: List[OCM.ObjectTrace] = []
 
-        for trace in trace_list:
-            obj_traces: OCM.ObjectTrace = defaultdict(list)
+    #     for trace in trace_list:
+    #         obj_traces: OCM.ObjectTrace = defaultdict(list)
 
-            for step in trace.steps:
-                action = step.action
-                assert action is not None, "Action cannot be None"
-                zero_event = Event(action, pos=(0,), sort=(0,))
-                obj_traces[(zero_obj,)].append(zero_event)
-                graphs[(0,)].add_node(zero_event)
+    #         for step in trace.steps:
+    #             action = step.action
+    #             assert action is not None, "Action cannot be None"
+    #             zero_event = Event(action, pos=(0,), sort=(0,))
+    #             obj_traces[(zero_obj,)].append(zero_event)
+    #             graphs[(0,)].add_node(zero_event)
 
-                all_pos_tuples = generate_permutations([i+1 for i in range(len(action.obj_params))], self.event_arity)
-                # add the step for the zero-object
-                for pos_tuple in all_pos_tuples:
-                    objs = tuple(action.obj_params[pos-1] for pos in pos_tuple)
-                    sort_tuple = tuple(sorts[obj.name] for obj in objs)
-                    event = Event(action, pos=pos_tuple, sort=sort_tuple)
+    #             all_pos_tuples = generate_permutations([i+1 for i in range(len(action.obj_params))], self.event_arity)
+    #             # add the step for the zero-object
+    #             for pos_tuple in all_pos_tuples:
+    #                 objs = tuple(action.obj_params[pos-1] for pos in pos_tuple)
+    #                 sort_tuple = tuple(sorts[obj.name] for obj in objs)
+    #                 event = Event(action, pos=pos_tuple, sort=sort_tuple)
                     
-                    obj_traces[objs].append(event)
-                    graphs[sort_tuple].add_node(event)
+    #                 obj_traces[objs].append(event)
+    #                 graphs[sort_tuple].add_node(event)
                     
-            obj_traces_list.append(obj_traces)
+    #         obj_traces_list.append(obj_traces)
 
-        TM_dict = defaultdict(pd.DataFrame)
-        for obj_trace in obj_traces_list:
-            for objs, seq in obj_trace.items():
-                sort_tuple = tuple(sorts[obj.name] for obj in objs)
-                for i in range(0, len(seq) - 1):
-                    graphs[sort_tuple].add_edge(seq[i],seq[i+1],weight=1)
+    #     TM_dict = defaultdict(pd.DataFrame)
+    #     for obj_trace in obj_traces_list:
+    #         for objs, seq in obj_trace.items():
+    #             sort_tuple = tuple(sorts[obj.name] for obj in objs)
+    #             for i in range(0, len(seq) - 1):
+    #                 graphs[sort_tuple].add_edge(seq[i],seq[i+1],weight=1)
                         
-        for sort_tuple, G in graphs.items():
-            TM = nx.to_pandas_adjacency(G, nodelist=G.nodes(), dtype=int)
-            TM_dict[sort_tuple] = TM
-            if self.debug['trace_to_obj_trace']:
-                print(f"Transition matrix for sort {sort_tuple}:")
-                pprint_table(TM)
+    #     for sort_tuple, G in graphs.items():
+    #         TM = nx.to_pandas_adjacency(G, nodelist=G.nodes(), dtype=int)
+    #         TM_dict[sort_tuple] = TM
+    #         if self.debug['trace_to_obj_trace']:
+    #             print(f"Transition matrix for sort {sort_tuple}:")
+    #             pprint_table(TM)
 
-        return  obj_traces_list, TM_dict
+    #     grouped_obj_traces = defaultdict(list)
+    #     for obj_traces in obj_traces_list:
+    #         for obj, seq in obj_traces.items():
+    #             grouped_obj_traces[obj].append(seq)
+
+    #     return  grouped_obj_traces, TM_dict
 
     def TM_to_OSM(self, TM_dict: List[pd.DataFrame]):
         OSM_dict = defaultdict(list)

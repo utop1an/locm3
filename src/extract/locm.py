@@ -13,8 +13,8 @@ class LOCM(OCM):
     Binding = NamedTuple("Binding", [("hypothesis", Hypothesis), ("param", int)])
     Bindings = Dict[int, Dict[int, List[Binding]]]  # {sort: {state: [Binding]}}
 
-    def __init__(self, state_param:bool=True, viz=False, timeout:int=600, debug: Dict[str, bool]=None):
-        super().__init__(state_param,viz, timeout, debug)
+    def __init__(self, event_arity=1, state_param:bool=True, viz=False, timeout:int=600, debug: Dict[str, bool]=None):
+        super().__init__(event_arity=event_arity, state_param=state_param,viz=viz, timeout=timeout, debug=debug)
         
 
     def extract_model(self, tracelist, types=None)-> LearnedModel:
