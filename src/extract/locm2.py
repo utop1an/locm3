@@ -26,7 +26,7 @@ class LOCM2(OCM):
     def extract_model(self, trace_list, types=None):
         
         sorts, sort_to_type_dict = self._get_sorts(trace_list, types)
-        obj_traces, TM_list = self.trace_to_obj_trace(trace_list, sorts)
+        obj_traces, TM_list = self.trace_to_obj_trace2(trace_list, sorts)
         transition_sets_per_sort_list = self.split_transitions(TM_list, obj_traces, sorts)
         TS, OS, ap_state_pointers = self.get_TS_OS(obj_traces, transition_sets_per_sort_list, TM_list, sorts)
         if self.state_param:

@@ -107,9 +107,6 @@ class LOCM3(OCM):
                 ceA, self_included = self.get_ceA(row, event)
                 # TODO: check if an even has no consecutive events after it and ban such an OSM?
                 
-                if not ceA:
-                    continue
-                
                 osm = OSM(sort_tuple, event, ceA, self_included)
                 OSM_by_event.append(osm)
             OSM_dict[sort_tuple] = OSM_by_event
